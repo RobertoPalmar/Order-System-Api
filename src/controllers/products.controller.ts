@@ -1,10 +1,10 @@
 import { Product } from "@models/Database/product.model";
+import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import { Request, Response } from "express";
 
 export const getAllProducts = async (req : Request, res: Response) => {
   const products = await Product.find();
-
-  res.status(200).json(products);
+  SuccessResponse.GET(res, products);
 };
 
 export const getProductBy = async (req: Request, res: Response) => {
@@ -16,7 +16,12 @@ export const getProductByID = async (req: Request, res: Response) => {
 
   const productByID = await Product.findById(productID);
 
-  res.status(200).json(productByID);
+  if(productByID == null){
+    ErrorResponse.NOT_FOUND(res, "Product");
+    return;
+  }
+
+  SuccessResponse.GET(res, productByID);
 };
 
 export const createProduct = async (req: Request, res: Response) => {
@@ -38,16 +43,27 @@ export const createProduct = async (req: Request, res: Response) => {
   });
 
   const newProduct = await product.save();
-  res.status(201).json(newProduct);
+  SuccessResponse.CREATION(res,newProduct);
 };
 
 export const updateProduct = async (req: Request, res: Response) => {
   const updateProduct = await Product.findByIdAndUpdate(req.params.productID, req.body, {new: true});
-  
-  res.status(200).json(updateProduct);
+
+  if(updateProduct == null){
+    ErrorResponse.NOT_FOUND(res,"Product");
+    return;
+  }
+
+  SuccessResponse.UPDATE(res,updateProduct);
 };
 
 export const deleteProduct = async (req: Request, res: Response) => {
-  await Product.findByIdAndDelete(req.params.productID);
-  res.status(200).json();
+  const deleteEntity = await Product.findByIdAndDelete(req.params.productID);
+
+  if(deleteEntity == null){
+    ErrorResponse.NOT_FOUND(res,"Product")
+    return;
+  }
+
+  SuccessResponse.DELETE(res);
 };

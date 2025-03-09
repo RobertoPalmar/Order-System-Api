@@ -5,7 +5,7 @@ import { Product } from "@models/Database/product.model";
 import { ProductionArea } from "@models/Database/productionArea.model";
 import { User } from "@models/Database/user.model";
 import { UserRole } from "@global/definitions";
-import { encryptPassword } from "@global/utils";
+import EncryptUtils from "@utils/encrypt.utils";
 
 const createCategorySeed = async () => {
   try {
@@ -189,7 +189,7 @@ const createUserSeed = async () => {
         new User({
           name: "Admin Restaurant",
           email: "admin.restaurant@demo.com",
-          password: await encryptPassword("admin123"),
+          password: await EncryptUtils.encryptString("admin123"),
           role: UserRole.ADMIN,
           status: true
         }).save(),
@@ -197,7 +197,7 @@ const createUserSeed = async () => {
         new User({
           name: "Admin Coffee",
           email: "admin.coffee@demo.com",
-          password: await encryptPassword("admin123"),
+          password: await EncryptUtils.encryptString("admin123"),
           role: UserRole.ADMIN,
           status: true
         }).save()
