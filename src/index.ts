@@ -1,5 +1,5 @@
 import app from "./app";
-import "@db/connection";
+import "src/database/connection";
 
 const port = process.env.PORT;
 

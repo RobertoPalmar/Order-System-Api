@@ -1,4 +1,4 @@
-import { ApiResponse } from "@models/Response/apiResponse.model";
+import { ApiResponse } from "@models/response/apiResponse.model";
 import { Response } from "express";
 
 export class SuccessResponse {
@@ -20,6 +20,10 @@ export class SuccessResponse {
       },
     };
     res.status(status).json(response);
+  }
+
+  static INFO<T>(res: Response, data: T): void {
+    this.set(res, data, 1000, "Info successfull get", 201);
   }
 
   static CREATION<T>(res: Response, data: T): void {
@@ -106,5 +110,9 @@ export class ErrorResponse {
 
   static EXPIRED_TOKEN(res: Response): void {
     this.set(res, 4012, "Authentication token has expired", 401);
+  }
+
+  static UNEXPECTED_ERROR(res: Response): void {
+    this.set(res, 5000, "An unexpected error occurred", 500);
   }
 }

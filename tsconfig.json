@@ -31,11 +31,11 @@
     "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
       "@services/*":["src/services/*"],
-      "@db/*":["src/db/*"],
+      "@db/*":["src/database/*"],
       "@global/*":["src/global/*"],
       "@routes/*":["src/routes/*"],
       "@models/*":["src/models/*"],
-      "@dbModels/*":["src/models/Database/*"],
+      "@dbModels/*":["src/models/database/*"],
       "@dtoModels/*":["src/models/DTOs/*"],
       "@controllers/*":["src/controllers/*"],
       "@utils/*":["src/utils/*"],

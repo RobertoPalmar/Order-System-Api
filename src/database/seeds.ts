@@ -1,16 +1,17 @@
-import { BussinesUnit } from "@models/Database/bussinesUnit.model";
-import { Category } from "@models/Database/category.model";
-import { Currency } from "@models/Database/currency.model";
-import { Product } from "@models/Database/product.model";
-import { ProductionArea } from "@models/Database/productionArea.model";
-import { User } from "@models/Database/user.model";
+import { BussinesUnit } from "@models/database/bussinesUnit.model";
+import { Category } from "@models/database/category.model";
+import { Currency } from "@models/database/currency.model";
+import { Product } from "@models/database/product.model";
+import { ProductionArea } from "@models/database/productionArea.model";
+import { User } from "@models/database/user.model";
 import { UserRole } from "@global/definitions";
 import EncryptUtils from "@utils/encrypt.utils";
+import { repositoryHub } from "src/repositories/repositoryHub";
 
 const createCategorySeed = async () => {
   try {
     //VALIDATE CATEGORIES
-    const existCategories = await Category.estimatedDocumentCount() > 0;
+    const existCategories = (await Category.estimatedDocumentCount()) > 0;
 
     if (!existCategories) {
       const bussinesUnit = await BussinesUnit.findOne();
@@ -19,26 +20,26 @@ const createCategorySeed = async () => {
         new Category({
           name: "Main Dishes",
           description: "Primary meal options",
-          bussinesUnit: bussinesUnit?._id
+          bussinesUnit: bussinesUnit?._id,
         }).save(),
 
         new Category({
           name: "Appetizers",
           description: "Starters and small plates",
-          bussinesUnit: bussinesUnit?._id
+          bussinesUnit: bussinesUnit?._id,
         }).save(),
 
         new Category({
           name: "Beverages",
           description: "Drinks and refreshments",
-          bussinesUnit: bussinesUnit?._id
+          bussinesUnit: bussinesUnit?._id,
         }).save(),
 
         new Category({
           name: "Desserts",
           description: "Sweet treats and desserts",
-          bussinesUnit: bussinesUnit?._id
-        }).save()
+          bussinesUnit: bussinesUnit?._id,
+        }).save(),
       ]);
 
       console.log("Categories created successfully");
@@ -52,7 +53,7 @@ const createCategorySeed = async () => {
 const createCurrencySeed = async () => {
   try {
     //VALIDATE CURRENCIES
-    const existCurrencies = await Currency.estimatedDocumentCount() > 0;
+    const existCurrencies = (await Currency.estimatedDocumentCount()) > 0;
 
     if (!existCurrencies) {
       const bussinesUnit = await BussinesUnit.findOne();
@@ -64,7 +65,7 @@ const createCurrencySeed = async () => {
           symbol: "$",
           ExchangeRate: 1,
           Main: true,
-          BussinesUnit: bussinesUnit?._id
+          BussinesUnit: bussinesUnit?._id,
         }).save(),
 
         new Currency({
@@ -73,7 +74,7 @@ const createCurrencySeed = async () => {
           symbol: "€",
           ExchangeRate: 0.92,
           Main: false,
-          BussinesUnit: bussinesUnit?._id
+          BussinesUnit: bussinesUnit?._id,
         }).save(),
 
         new Currency({
@@ -82,8 +83,8 @@ const createCurrencySeed = async () => {
           symbol: "£",
           ExchangeRate: 0.79,
           Main: false,
-          BussinesUnit: bussinesUnit?._id
-        }).save()
+          BussinesUnit: bussinesUnit?._id,
+        }).save(),
       ]);
 
       console.log("Currencies created successfully");
@@ -104,7 +105,7 @@ const createProductSeed = async () => {
     const currency = await Currency.findOne();
     const productArea = await ProductionArea.findOne();
 
-    const templateProducts = await Promise.all([
+    const templateProducts = await repositoryHub.productRepository.createRange([
       new Product({
         name: "Classic Burger",
         description: "Beef patty with lettuce, tomato, and cheese",
@@ -117,8 +118,7 @@ const createProductSeed = async () => {
         status: true,
         productArea: productArea?._id,
         bussinesUnit: bussinesUnit?._id,
-      }).save(),
-
+      }),
       new Product({
         name: "Margherita Pizza",
         description: "Fresh tomatoes, mozzarella, and basil",
@@ -131,8 +131,7 @@ const createProductSeed = async () => {
         status: true,
         productArea: productArea?._id,
         bussinesUnit: bussinesUnit?._id,
-      }).save(),
-
+      }),
       new Product({
         name: "Caesar Salad",
         description: "Romaine lettuce, croutons, parmesan cheese",
@@ -145,8 +144,7 @@ const createProductSeed = async () => {
         status: true,
         productArea: productArea?._id,
         bussinesUnit: bussinesUnit?._id,
-      }).save(),
-
+      }),
       new Product({
         name: "Chicken Wings",
         description: "Spicy buffalo wings with blue cheese dip",
@@ -159,8 +157,7 @@ const createProductSeed = async () => {
         status: true,
         productArea: productArea?._id,
         bussinesUnit: bussinesUnit?._id,
-      }).save(),
-
+      }),
       new Product({
         name: "Fish & Chips",
         description: "Battered cod with french fries",
@@ -173,7 +170,7 @@ const createProductSeed = async () => {
         status: true,
         productArea: productArea?._id,
         bussinesUnit: bussinesUnit?._id,
-      }).save(),
+      }),
     ]);
 
     console.log("Products created successfully");
@@ -183,7 +180,7 @@ const createProductSeed = async () => {
 
 const createUserSeed = async () => {
   try {
-    const existUsers = await User.estimatedDocumentCount() > 0;
+    const existUsers = (await User.estimatedDocumentCount()) > 0;
     if (!existUsers) {
       const templateUsers = await Promise.all([
         new User({
@@ -191,7 +188,7 @@ const createUserSeed = async () => {
           email: "admin.restaurant@demo.com",
           password: await EncryptUtils.encryptString("admin123"),
           role: UserRole.ADMIN,
-          status: true
+          status: true,
         }).save(),
 
         new User({
@@ -199,8 +196,8 @@ const createUserSeed = async () => {
           email: "admin.coffee@demo.com",
           password: await EncryptUtils.encryptString("admin123"),
           role: UserRole.ADMIN,
-          status: true
-        }).save()
+          status: true,
+        }).save(),
       ]);
 
       console.log("Users created successfully");
@@ -213,23 +210,27 @@ const createUserSeed = async () => {
 
 const createBussinesUnitSeed = async () => {
   try {
-    const existBussinesUnit = await BussinesUnit.estimatedDocumentCount() > 0;
+    const existBussinesUnit = (await BussinesUnit.estimatedDocumentCount()) > 0;
     if (!existBussinesUnit) {
-      const adminRestaurant = await User.findOne({ email: "admin.restaurant@demo.com" });
-      const adminCoffee = await User.findOne({ email: "admin.coffee@demo.com" });
+      const adminRestaurant = await User.findOne({
+        email: "admin.restaurant@demo.com",
+      });
+      const adminCoffee = await User.findOne({
+        email: "admin.coffee@demo.com",
+      });
 
       const templateBussinesUnit = await Promise.all([
         new BussinesUnit({
           name: "Restaurant Demo",
           description: "Main restaurant business unit",
-          owner: adminRestaurant?._id
+          owner: adminRestaurant?._id,
         }).save(),
 
         new BussinesUnit({
           name: "Coffee Shop Demo",
           description: "Coffee shop subsidiary",
-          owner: adminCoffee?._id
-        }).save()
+          owner: adminCoffee?._id,
+        }).save(),
       ]);
 
       console.log("Business Units created successfully");
@@ -248,7 +249,7 @@ const cleanupDatabase = async () => {
       Category.deleteMany({}),
       Currency.deleteMany({}),
       Product.deleteMany({}),
-      ProductionArea.deleteMany({})
+      ProductionArea.deleteMany({}),
     ]);
     console.log("Database cleaned successfully");
   } catch (ex) {
@@ -264,6 +265,8 @@ export const createDataSeed = async () => {
     await createCategorySeed();
     await createCurrencySeed();
     await createProductSeed();
+    const separator = '='.repeat(50);
+    console.log(separator);
   } catch (ex) {
     console.log("Error seeding the data:", ex);
   }

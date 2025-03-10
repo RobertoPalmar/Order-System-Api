@@ -1,5 +1,5 @@
 import { ErrorResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/Token.utils";
+import TokenUtils from "@utils/token.utils";
 import { NextFunction, Request, Response } from "express";
 
 export const validateAuth = async (req: Request, res: Response, next: NextFunction) => {
@@ -22,8 +22,6 @@ export const validateAuth = async (req: Request, res: Response, next: NextFuncti
     ErrorResponse.INVALID_TOKEN(res);
     return;
   }
-
-  console.log({decoded});
 
   //TODO, VALIDATE ROL TYPE AND DECODE DATA
 

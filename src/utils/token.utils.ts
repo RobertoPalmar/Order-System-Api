@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { SECRET_KEY_TOKEN } from "../global/config";
-import { IUser } from "@models/Database/user.model";
+import { IUser } from "@models/database/user.model";
 
 export default class TokenUtils{
 
