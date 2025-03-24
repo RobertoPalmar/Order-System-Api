@@ -1,6 +1,6 @@
 import { OrderStatus, OrderType } from "@global/definitions";
 import mongoose, { Schema, Types } from "mongoose";
-import { IBussinesUnit } from "./bussinesUnit.model";
+import { IBusinessUnit } from "./businessUnit.model";
 import { CustomerSchema, ICustomer } from "./customer.model";
 import { UserSchema, IUser } from "./user.model";
 import { CurrencySchema, ICurrency } from "./currency.model";
@@ -33,7 +33,7 @@ export interface IOrder extends mongoose.Document{
   description: string,
   status: OrderStatus,
   type: OrderType,
-  bussinesUnit: Types.ObjectId | IBussinesUnit,
+  businessUnit: Types.ObjectId | IBusinessUnit,
   customer: ICustomer,
   owner: IUser,
   amount: number,
@@ -55,9 +55,9 @@ const OrderSchema = new Schema<IOrder>(
       enum: Object.values(OrderType),
       required: true
     },
-    bussinesUnit: {
+    businessUnit: {
       type: Schema.Types.ObjectId,
-      ref: "BussinesUnit",
+      ref: "BusinessUnit",
       required: true
     },
     customer: CustomerSchema,

@@ -1,5 +1,5 @@
 import mongoose, { mongo, Schema, Types } from "mongoose";
-import { IBussinesUnit } from "./bussinesUnit.model";
+import { IBusinessUnit } from "./businessUnit.model";
 
 export interface ICustomer extends mongoose.Document{
   firstName: string,
@@ -7,7 +7,7 @@ export interface ICustomer extends mongoose.Document{
   documentID: string,
   email: string,
   phone: string,
-  bussinesUnit: Types.ObjectId | IBussinesUnit
+  businessUnit: Types.ObjectId | IBusinessUnit
 }
 
 export const CustomerSchema = new mongoose.Schema<ICustomer>(
@@ -17,9 +17,9 @@ export const CustomerSchema = new mongoose.Schema<ICustomer>(
     documentID: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true },
-    bussinesUnit: {
+    businessUnit: {
       type: Schema.Types.ObjectId,
-      ref: "BussinesUnit",
+      ref: "BusinessUnit",
       required: true,
     },
   },

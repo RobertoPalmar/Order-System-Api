@@ -2,7 +2,7 @@ import mongoose, { Schema, Types } from "mongoose";
 import { IComponent } from "./component.model";
 import { ICategory } from "./category.model";
 import { ICurrency } from "./currency.model";
-import { IBussinesUnit } from "./bussinesUnit.model";
+import { IBusinessUnit } from "./businessUnit.model";
 import { IProductionArea } from "./productionArea.model";
 
 export interface IProduct extends mongoose.Document {
@@ -16,14 +16,14 @@ export interface IProduct extends mongoose.Document {
   currency: Types.ObjectId | ICurrency;
   status: boolean;
   productArea: Types.ObjectId | IProductionArea;
-  bussinesUnit: Types.ObjectId | IBussinesUnit;
+  businessUnit: Types.ObjectId | IBusinessUnit;
 }
 
 export const ProductSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true },
-    description: { type: String, required: true },
-    image: { type: String, required: true },
+    description: { type: String },
+    image: { type: String },
     category: {
       type: Schema.Types.ObjectId,
       ref: "Category",
@@ -49,9 +49,9 @@ export const ProductSchema = new Schema<IProduct>(
       ref: "ProductionArea",
       required: false,
     },
-    bussinesUnit: {
+    businessUnit: {
       type: Schema.Types.ObjectId,
-      ref: "BussinesUnit",
+      ref: "BusinessUnit",
       required: true,
     },
   },

@@ -1,13 +1,13 @@
 import mongoose, { Schema, Types } from "mongoose";
-import { IBussinesUnit } from "./bussinesUnit.model";
+import { IBusinessUnit } from "./businessUnit.model";
 
 export interface ICurrency extends mongoose.Document {
   name: string;
   ISO: string;
   symbol: string;
-  ExchangeRate: number;
-  Main: boolean;
-  BussinesUnit: Types.ObjectId | IBussinesUnit;
+  exchangeRate: number;
+  main: boolean;
+  businessUnit: Types.ObjectId | IBusinessUnit;
 }
 
 export const CurrencySchema = new Schema<ICurrency>(
@@ -15,11 +15,11 @@ export const CurrencySchema = new Schema<ICurrency>(
     name: { type: String, required: true },
     ISO: { type: String, required: true },
     symbol: { type: String, required: true },
-    ExchangeRate: { type: Number, required: true },
-    Main: { type: Boolean, required: true },
-    BussinesUnit: {
+    exchangeRate: { type: Number, required: true },
+    main: { type: Boolean, required: true },
+    businessUnit: {
       type: Schema.Types.ObjectId,
-      ref: "BussinesUnit",
+      ref: "BusinessUnit",
       required: true,
     },
   },

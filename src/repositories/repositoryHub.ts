@@ -1,7 +1,7 @@
 import { IProduct, Product } from "@models/database/product.model";
 import { BaseRepository } from "./baseRepository";
 import { Category, ICategory } from "@models/database/category.model";
-import { BussinesUnit, IBussinesUnit } from "@models/database/bussinesUnit.model";
+import { BusinessUnit, IBusinessUnit } from "@models/database/businessUnit.model";
 import { Component, IComponent } from "@models/database/component.model";
 import { Currency, ICurrency } from "@models/database/currency.model";
 import { Customer, ICustomer } from "@models/database/customer.model";
@@ -10,7 +10,7 @@ import { IProductionArea, ProductionArea } from "@models/database/productionArea
 import { IUser, User } from "@models/database/user.model";
 
 class RepositoryHub {
-  bussinesUnitRepository: BaseRepository<IBussinesUnit>
+  businessUnitRepository: BaseRepository<IBusinessUnit>
   categoryRepository: BaseRepository<ICategory>
   componentRepository: BaseRepository<IComponent>
   currencyRepository: BaseRepository<ICurrency>
@@ -21,7 +21,7 @@ class RepositoryHub {
   userRepository: BaseRepository<IUser>
 
   constructor(){
-    this.bussinesUnitRepository = new BaseRepository<IBussinesUnit>(BussinesUnit);
+    this.businessUnitRepository = new BaseRepository<IBusinessUnit>(BusinessUnit);
     this.categoryRepository = new BaseRepository<ICategory>(Category);
     this.componentRepository = new BaseRepository<IComponent>(Component);
     this.currencyRepository = new BaseRepository<ICurrency>(Currency);

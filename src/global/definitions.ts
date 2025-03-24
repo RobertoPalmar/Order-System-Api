@@ -1,4 +1,6 @@
 
+//---------------------------------------------ENUMS--------------------------------------------//
+
 export enum ComponentType {
   COMPONENT,
   EXTRA,
@@ -25,3 +27,33 @@ export enum OrderType{
   TAKE_AWAY,  //COUNTER ORDER
   DELIVERY    //DELIVERY ORDER
 }
+
+export enum TokenType{
+  USER_TOKEN,
+  BUSINESS_TOKEN
+}
+
+//------------------------------------------CONSTANTS------------------------------------------//
+
+export const productTotalPopulate = [
+  "category",
+  "components",
+  "currency",
+  "productArea",
+  "businessUnit",
+];
+
+export const productBasicPopulate = [
+  {
+    path:"category", 
+    select:"id name"
+  },
+  {
+    path:"currency",
+    select:"id name"
+  },
+  {
+    path:"components", 
+    select:"id name"
+  },
+]

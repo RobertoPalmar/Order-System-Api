@@ -1,12 +1,14 @@
-import { BussinesUnit } from "@models/database/bussinesUnit.model";
+import { BusinessUnit } from "@models/database/businessUnit.model";
 import { Category } from "@models/database/category.model";
 import { Currency } from "@models/database/currency.model";
 import { Product } from "@models/database/product.model";
 import { ProductionArea } from "@models/database/productionArea.model";
 import { User } from "@models/database/user.model";
-import { UserRole } from "@global/definitions";
+import { ComponentType, UserRole } from "@global/definitions";
 import EncryptUtils from "@utils/encrypt.utils";
 import { repositoryHub } from "src/repositories/repositoryHub";
+import { Component } from "@models/database/component.model";
+import { separator } from "@global/logs";
 
 const createCategorySeed = async () => {
   try {
@@ -14,31 +16,31 @@ const createCategorySeed = async () => {
     const existCategories = (await Category.estimatedDocumentCount()) > 0;
 
     if (!existCategories) {
-      const bussinesUnit = await BussinesUnit.findOne();
+      const businessUnit = await BusinessUnit.findOne();
 
       const templateCategories = await Promise.all([
         new Category({
           name: "Main Dishes",
           description: "Primary meal options",
-          bussinesUnit: bussinesUnit?._id,
+          businessUnit: businessUnit?._id,
         }).save(),
 
         new Category({
           name: "Appetizers",
           description: "Starters and small plates",
-          bussinesUnit: bussinesUnit?._id,
+          businessUnit: businessUnit?._id,
         }).save(),
 
         new Category({
           name: "Beverages",
           description: "Drinks and refreshments",
-          bussinesUnit: bussinesUnit?._id,
+          businessUnit: businessUnit?._id,
         }).save(),
 
         new Category({
           name: "Desserts",
           description: "Sweet treats and desserts",
-          bussinesUnit: bussinesUnit?._id,
+          businessUnit: businessUnit?._id,
         }).save(),
       ]);
 
@@ -56,34 +58,34 @@ const createCurrencySeed = async () => {
     const existCurrencies = (await Currency.estimatedDocumentCount()) > 0;
 
     if (!existCurrencies) {
-      const bussinesUnit = await BussinesUnit.findOne();
+      const businessUnit = await BusinessUnit.findOne();
 
       const templateCurrencies = await Promise.all([
         new Currency({
           name: "US Dollar",
           ISO: "USD",
           symbol: "$",
-          ExchangeRate: 1,
-          Main: true,
-          BussinesUnit: bussinesUnit?._id,
+          exchangeRate: 1,
+          main: true,
+          businessUnit: businessUnit?._id,
         }).save(),
 
         new Currency({
           name: "Euro",
           ISO: "EUR",
           symbol: "€",
-          ExchangeRate: 0.92,
-          Main: false,
-          BussinesUnit: bussinesUnit?._id,
+          exchangeRate: 0.92,
+          main: false,
+          businessUnit: businessUnit?._id,
         }).save(),
 
         new Currency({
           name: "British Pound",
           ISO: "GBP",
           symbol: "£",
-          ExchangeRate: 0.79,
-          Main: false,
-          BussinesUnit: bussinesUnit?._id,
+          exchangeRate: 0.79,
+          main: false,
+          businessUnit: businessUnit?._id,
         }).save(),
       ]);
 
@@ -100,24 +102,27 @@ const createProductSeed = async () => {
   const existProducts = (await Product.estimatedDocumentCount()) > 0;
 
   if (!existProducts) {
-    const bussinesUnit = await BussinesUnit.findOne();
+    const businessUnit = await BusinessUnit.findOne();
     const category = await Category.findOne();
     const currency = await Currency.findOne();
     const productArea = await ProductionArea.findOne();
 
+    const cheese = await Component.findOne({name:"Extra Cheese"});
+    const bacon = await Component.findOne({name:"Bacon"});
+    
     const templateProducts = await repositoryHub.productRepository.createRange([
       new Product({
         name: "Classic Burger",
         description: "Beef patty with lettuce, tomato, and cheese",
         image: "burger.jpg",
         category: category?._id,
-        components: [],
+        components: [cheese, bacon],
         price: 12.99,
         cost: 5.5,
         currency: currency?._id,
         status: true,
         productArea: productArea?._id,
-        bussinesUnit: bussinesUnit?._id,
+        businessUnit: businessUnit?._id,
       }),
       new Product({
         name: "Margherita Pizza",
@@ -130,7 +135,7 @@ const createProductSeed = async () => {
         currency: currency?._id,
         status: true,
         productArea: productArea?._id,
-        bussinesUnit: bussinesUnit?._id,
+        businessUnit: businessUnit?._id,
       }),
       new Product({
         name: "Caesar Salad",
@@ -143,7 +148,7 @@ const createProductSeed = async () => {
         currency: currency?._id,
         status: true,
         productArea: productArea?._id,
-        bussinesUnit: bussinesUnit?._id,
+        businessUnit: businessUnit?._id,
       }),
       new Product({
         name: "Chicken Wings",
@@ -156,7 +161,7 @@ const createProductSeed = async () => {
         currency: currency?._id,
         status: true,
         productArea: productArea?._id,
-        bussinesUnit: bussinesUnit?._id,
+        businessUnit: businessUnit?._id,
       }),
       new Product({
         name: "Fish & Chips",
@@ -169,7 +174,7 @@ const createProductSeed = async () => {
         currency: currency?._id,
         status: true,
         productArea: productArea?._id,
-        bussinesUnit: bussinesUnit?._id,
+        businessUnit: businessUnit?._id,
       }),
     ]);
 
@@ -208,10 +213,10 @@ const createUserSeed = async () => {
   }
 };
 
-const createBussinesUnitSeed = async () => {
+const createBusinessUnitSeed = async () => {
   try {
-    const existBussinesUnit = (await BussinesUnit.estimatedDocumentCount()) > 0;
-    if (!existBussinesUnit) {
+    const existBusinessUnit = (await BusinessUnit.estimatedDocumentCount()) > 0;
+    if (!existBusinessUnit) {
       const adminRestaurant = await User.findOne({
         email: "admin.restaurant@demo.com",
       });
@@ -219,14 +224,14 @@ const createBussinesUnitSeed = async () => {
         email: "admin.coffee@demo.com",
       });
 
-      const templateBussinesUnit = await Promise.all([
-        new BussinesUnit({
+      const templateBusinessUnit = await Promise.all([
+        new BusinessUnit({
           name: "Restaurant Demo",
           description: "Main restaurant business unit",
           owner: adminRestaurant?._id,
         }).save(),
 
-        new BussinesUnit({
+        new BusinessUnit({
           name: "Coffee Shop Demo",
           description: "Coffee shop subsidiary",
           owner: adminCoffee?._id,
@@ -234,7 +239,7 @@ const createBussinesUnitSeed = async () => {
       ]);
 
       console.log("Business Units created successfully");
-      console.log(templateBussinesUnit);
+      console.log(templateBusinessUnit);
     }
   } catch (ex) {
     console.log("Error creating business units:", ex);
@@ -245,15 +250,58 @@ const cleanupDatabase = async () => {
   try {
     await Promise.all([
       User.deleteMany({}),
-      BussinesUnit.deleteMany({}),
+      BusinessUnit.deleteMany({}),
       Category.deleteMany({}),
       Currency.deleteMany({}),
       Product.deleteMany({}),
       ProductionArea.deleteMany({}),
     ]);
+    console.log(separator);
     console.log("Database cleaned successfully");
   } catch (ex) {
     console.log("Error cleaning database:", ex);
+  }
+};
+
+const createComponentSeed = async () => {
+  try {
+    const existComponents = (await Component.estimatedDocumentCount()) > 0;
+
+    if (!existComponents) {
+      const businessUnit = await BusinessUnit.findOne();
+      const currency = await Currency.findOne();
+
+      const templateComponents = await Promise.all([
+        new Component({
+          name: "Extra Cheese",
+          description: "Additional cheese portion",
+          image: "cheese.jpg",
+          type: ComponentType.EXTRA,
+          status: true,
+          businessUnit: businessUnit?._id,
+          priceAsExtra: 1.50,
+          currency: currency?._id
+        }).save(),
+        new Component({
+          name: "Bacon",
+          description: "Crispy bacon strips",
+          image: "bacon.jpg",
+          type: ComponentType.EXTRA,
+          status: true,
+          businessUnit: businessUnit?._id,
+          priceAsExtra: 2.00,
+          currency: currency?._id
+        }).save(),
+      ]);
+
+      console.log("Components created successfully");
+      console.log(templateComponents);
+      return templateComponents;
+    }
+    return await Component.find();
+  } catch (ex) {
+    console.log("Error creating components:", ex);
+    return [];
   }
 };
 
@@ -261,11 +309,11 @@ export const createDataSeed = async () => {
   try {
     // await cleanupDatabase();
     await createUserSeed();
-    await createBussinesUnitSeed();
+    await createBusinessUnitSeed();
     await createCategorySeed();
     await createCurrencySeed();
-    await createProductSeed();
-    const separator = '='.repeat(50);
+    await createComponentSeed();
+    await createProductSeed(); 
     console.log(separator);
   } catch (ex) {
     console.log("Error seeding the data:", ex);

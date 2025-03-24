@@ -1,5 +1,7 @@
+import { TokenType } from "@global/definitions";
 import { ApiResponse } from "@models/response/apiResponse.model";
 import { Response } from "express";
+import { enumToString } from "./functions.utils";
 
 export class SuccessResponse {
   private static set<T>(
@@ -48,12 +50,32 @@ export class ErrorResponse {
     res: Response,
     code: number,
     message: string,
-    status: number
+    status: number,
   ): void {
     const response: ApiResponse<T> = {
       success: false,
       code,
       message,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        path: res.req.originalUrl,
+      },
+    };
+    res.status(status).json(response);
+  }
+
+  private static setWithData<T>(
+    res: Response,
+    code: number,
+    message: string,
+    errorData: T,
+    status: number,
+  ): void {
+    const response: ApiResponse<T> = {
+      success: false,
+      code,
+      message,
+      data: errorData,
       metadata: {
         timestamp: new Date().toISOString(),
         path: res.req.originalUrl,
@@ -110,6 +132,14 @@ export class ErrorResponse {
 
   static EXPIRED_TOKEN(res: Response): void {
     this.set(res, 4012, "Authentication token has expired", 401);
+  }
+
+  static VALIDATION_ERROR<T>(res: Response, errorData: T): void {
+    this.setWithData(res, 4013, "Validation errors", errorData, 400);
+  }
+  
+  static INVALID_TOKEN_TYPE(res: Response, tokenType:TokenType): void {
+    this.set(res, 4011, `Invalid token type to access. Login Requited ${enumToString(TokenType,tokenType)}`, 401);
   }
 
   static UNEXPECTED_ERROR(res: Response): void {

@@ -1,9 +1,10 @@
+import 'reflect-metadata';
 import app from "./app";
 import "src/database/connection";
+import { separator } from '@global/logs';
 
 const port = process.env.PORT;
 
-const separator = '='.repeat(50);
 app.listen(port, () => {
     console.clear(); // Clear the console
     console.log(separator);
