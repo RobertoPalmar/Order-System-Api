@@ -66,12 +66,6 @@ The **Order System API** is a backend service designed to manage orders efficien
 
 Detailed API documentation is available to guide you through the available endpoints and their usage.
 
-## 📬 Postman Collection
-
-You can test the API via Postman using the following collection:
-
-🔗 [Order System API Postman Collection](https://.postman.co/workspace/Comandera~2c9b261a-1f66-491b-b78a-8a8c936d0b3c/collection/26155566-218e5dfb-bde0-403d-80a3-9292e1a5bbfd?action=share&creator=26155566)
-
 ## 🪪 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
