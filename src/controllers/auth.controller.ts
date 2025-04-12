@@ -64,10 +64,10 @@ export const signIn = async (req: Request, res: Response) : Promise<void> => {
   }
 };
 
-export const signInWithBusinessUnit = async (req:Request, res:Response): Promise<void> => {
+export const signInBussinesUnit = async (req:Request, res:Response): Promise<void> => {
   try{
     const tokenData = TokenUtils.getTokenDataFromHeaders(req);
-    const {businessUnitID} = req.body;
+    const {businessUnitID} = req.params;
 
     const validBusinessUnit = await repositoryHub.businessUnitRepository.findById(businessUnitID);
     if(validBusinessUnit == null){
@@ -76,7 +76,7 @@ export const signInWithBusinessUnit = async (req:Request, res:Response): Promise
     }
 
     const businessToken = TokenUtils.generateBusinessToken(tokenData.userID, tokenData.role, validBusinessUnit)
-
+    SuccessResponse.GET(res, {businessToken})
   } catch (ex: any) {
     console.log("❌ Error in signIn:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);

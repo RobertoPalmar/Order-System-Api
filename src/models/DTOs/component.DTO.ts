@@ -1,18 +1,41 @@
 import { Expose, Type } from "class-transformer";
-import { CurrencyDTO } from "./currency.DTO";
+import { CurrencyDTOOut } from "./currency.DTO";
 import { ComponentType } from "@global/definitions";
+import { BusinessUnitDTOOut } from "./businessUnit.DTO";
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
-export class ComponentDTO {
+export class ComponentDTOIn {
+  @IsString() name!: string;
+  @IsString() description!: string;
+  @IsString() image!: string;
+  @IsEnum(ComponentType) type!: ComponentType;
+  @IsBoolean() status: boolean = true;
+  @IsString() businessUnit!: string;
+  @IsNumber() @Min(0) priceAsExtra!: number;
+  @IsString() currency!: string;
+}
+
+export class PartialComponentDTOIn {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() image?: string;
+  @IsOptional() @IsEnum(ComponentType) type?: ComponentType;
+  @IsOptional() @IsBoolean() status?: boolean;
+  @IsOptional() @IsString() businessUnit?: string;
+  @IsOptional() @IsNumber() @Min(0) priceAsExtra?: number;
+  @IsOptional() @IsString() currency?: string;
+}
+
+export class ComponentDTOOut {
   @Expose() id: string;
   @Expose() name: string;
   @Expose() description: string;
   @Expose() image: string;
   @Expose() type: ComponentType
   @Expose() status: boolean;
-  // @Expose() @Type(() => BusinessUnitDTO) BusinessUnit: BusinessUnitDTO;
-
   @Expose() priceAsExtra:number;
-  @Expose() @Type(()=> CurrencyDTO) currency: CurrencyDTO
+  @Expose() @Type(()=> CurrencyDTOOut) currency: CurrencyDTOOut
+  @Expose() @Type(() => BusinessUnitDTOOut) businessUnit: BusinessUnitDTOOut;
 
 
   constructor(
@@ -23,7 +46,8 @@ export class ComponentDTO {
     type:ComponentType,
     status: boolean = false,
     priceAsExtra:number,
-    currency:CurrencyDTO
+    currency:CurrencyDTOOut,
+    businessUnit:BusinessUnitDTOOut
   ) {
     this.id = id;
     this.name = name;
@@ -33,5 +57,6 @@ export class ComponentDTO {
     this.status = status;
     this.priceAsExtra = priceAsExtra;
     this.currency = currency;
+    this.businessUnit = businessUnit;
   }
 }

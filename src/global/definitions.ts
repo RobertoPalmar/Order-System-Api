@@ -45,7 +45,7 @@ export const productTotalPopulate = [
 
 export const productBasicPopulate = [
   {
-    path:"category", 
+    path:"category",
     select:"id name"
   },
   {
@@ -53,7 +53,40 @@ export const productBasicPopulate = [
     select:"id name"
   },
   {
-    path:"components", 
+    path:"components",
     select:"id name"
   },
+  {
+    path:"businessUnit",
+    select:"id name"
+  }
+]
+
+export const categoryBasicPopulate = [
+  {
+    path:"businessUnit",
+    select:"id name"
+  }
+]
+
+export const currencyBasicPopulate = [
+  {
+    path:"businessUnit",
+    select:"id name"
+  }
+]
+
+export const componentBasicPopulate = [
+  {
+    path:"currency",
+    select:"id name symbol"
+  },
+  {
+    path:"businessUnit",
+    select:"id name"
+  }
+]
+
+export const componentTotalPopulate = [
+  "currency"
 ]

@@ -1,16 +1,15 @@
 import { Expose, Type } from "class-transformer";
-import { CategoryDTO } from "./category.DTO";
-import { ComponentDTO } from "./component.DTO";
+import { ComponentDTOOut } from "./component.DTO";
 import {
-  IsArray,
   IsBoolean,
-  IsDecimal,
   IsNumber,
   IsOptional,
   IsString,
   Min,
 } from "class-validator";
-import { CurrencyDTO } from "./currency.DTO";
+import { CurrencyDTOOut } from "./currency.DTO";
+import { BusinessUnitDTOOut } from "./businessUnit.DTO";
+import { CategoryDTOOut } from "./category.DTO";
 
 export class ProductDTOIn {
   @IsString() name!: string;
@@ -44,26 +43,27 @@ export class ProductDTOOut {
   @Expose() name: string;
   @Expose() description: string;
   @Expose() image: string;
-  @Expose() @Type(() => CategoryDTO) category: CategoryDTO;
-  @Expose() @Type(() => ComponentDTO) components: ComponentDTO[];
+  @Expose() @Type(() => CategoryDTOOut) category: CategoryDTOOut;
+  @Expose() @Type(() => ComponentDTOOut) components: ComponentDTOOut[];
   @Expose() price: number;
   @Expose() cost: number;
-  @Expose() @Type(() => CurrencyDTO) currency: CurrencyDTO;
+  @Expose() @Type(() => CurrencyDTOOut) currency: CurrencyDTOOut;
   @Expose() status: boolean;
   // productArea: Types.ObjectId | IProductionArea;
-  // businessUnit: Types.ObjectId | IBusinessUnit;
+  @Expose() @Type(() => BusinessUnitDTOOut) businessUnit: BusinessUnitDTOOut;
 
   constructor(
     id: string,
     name: string,
     description: string,
     image: string,
-    category: CategoryDTO,
-    components: ComponentDTO[],
+    category: CategoryDTOOut,
+    components: ComponentDTOOut[],
     price: number,
     cost: number,
-    currency: CurrencyDTO,
-    status: boolean
+    currency: CurrencyDTOOut,
+    status: boolean,
+    businessUnit:BusinessUnitDTOOut
   ) {
     this.id = id;
     this.name = name;
@@ -75,5 +75,6 @@ export class ProductDTOOut {
     this.cost = cost;
     this.currency = currency;
     this.status = status;
+    this.businessUnit = businessUnit;
   }
 }

@@ -1,7 +1,11 @@
 import express, { Express, Request, Response } from "express";
 import pkg from "../package.json";
+import businessUnitRoutes from "@routes/bussinesUnit.routes"
 import productRoutes from "@routes/products.routes";
 import authRoutes from "@routes/auth.routes";
+import categoryRoutes from "@routes/category.routes"
+import currencyRoutes from "@routes/currency.routes"
+import componentRoutes from "@routes/component.routes"
 import { createDataSeed } from "src/database/seeds";
 import { SuccessResponse } from "@utils/responseHandler.utils";
 
@@ -23,7 +27,11 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 //IMPORT ROUTES
-app.use("/Products", productRoutes);
 app.use("/Auth", authRoutes);
+app.use("/BusinessUnit", businessUnitRoutes)
+app.use("/Products", productRoutes);
+app.use("/Categories",categoryRoutes)
+app.use("/Currencies",currencyRoutes)
+app.use("/Components",componentRoutes)
 
 export default app;

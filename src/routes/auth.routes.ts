@@ -6,6 +6,6 @@ const router = Router();
 
 router.post('/signIn', authController.signIn);
 router.post('/signUp', authController.signUp);
-router.post('/signInWithBusinessUnit', validateAuth, authController.signInWithBusinessUnit)
+router.get('/signInBussinesUnit/:businessUnitID', validateAuth, authController.signInBussinesUnit)
 
 export default router;

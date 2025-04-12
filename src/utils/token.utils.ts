@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { SECRET_KEY_TOKEN } from "../global/config";
 import { IUser } from "@models/database/user.model";
-import { TokenData } from "@models/helpers/tokenData.model"
+import { TokenBussinesData, TokenData } from "@models/helpers/tokenData.model"
 import { Request } from "express";
 import { IBusinessUnit } from "@models/database/businessUnit.model";
 import { UserRole } from "@global/definitions";
@@ -58,6 +58,22 @@ export default class TokenUtils{
       if(role != null && userID != null){
         tokenData.role = parseInt(role.toString());
         tokenData.userID = userID.toString();
+      }
+    
+      return tokenData;
+    }
+
+    /** Get the tokenData from a header **/
+    static getTokenBussinesDataFromHeaders = (req:Request):TokenBussinesData => {
+      const tokenData = new TokenBussinesData();
+    
+      const role = req.headers["role"];
+      const userID = req.headers["userID"];
+      const businessUnitID = req.headers["businessUnitID"]
+      if(role != null && userID != null){
+        tokenData.role = parseInt(role.toString());
+        tokenData.userID = userID.toString();
+        tokenData.businessUnitID = businessUnitID!.toString();
       }
     
       return tokenData;
