@@ -66,6 +66,5 @@ The **Order System API** is a backend service designed to manage orders efficien
 
 Detailed API documentation is available to guide you through the available endpoints and their usage.
 
-## 🪪 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+<!-- ## 🪪 License -->
+<!-- This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. -->
