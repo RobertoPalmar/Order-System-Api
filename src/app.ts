@@ -6,6 +6,9 @@ import authRoutes from "@routes/auth.routes";
 import categoryRoutes from "@routes/category.routes"
 import currencyRoutes from "@routes/currency.routes"
 import componentRoutes from "@routes/component.routes"
+import customerRoutes from "@routes/customer.routes"
+import userRoutes from "@routes/user.routes"
+import productionAreaRoutes from "@routes/productionArea.routes"
 import { createDataSeed } from "src/database/seeds";
 import { SuccessResponse } from "@utils/responseHandler.utils";
 
@@ -33,5 +36,8 @@ app.use("/Products", productRoutes);
 app.use("/Categories",categoryRoutes)
 app.use("/Currencies",currencyRoutes)
 app.use("/Components",componentRoutes)
+app.use("/Customers",customerRoutes)
+app.use("/Users",userRoutes)
+app.use("/ProductionAreas",productionAreaRoutes)
 
 export default app;

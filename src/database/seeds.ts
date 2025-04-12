@@ -109,7 +109,7 @@ const createProductSeed = async () => {
 
     const cheese = await Component.findOne({name:"Extra Cheese"});
     const bacon = await Component.findOne({name:"Bacon"});
-    
+
     const templateProducts = await repositoryHub.productRepository.createRange([
       new Product({
         name: "Classic Burger",
@@ -305,6 +305,55 @@ const createComponentSeed = async () => {
   }
 };
 
+const createProductionAreaSeed = async () => {
+  try {
+    const existProductionAreas = (await ProductionArea.estimatedDocumentCount()) > 0;
+
+    if (!existProductionAreas) {
+      const businessUnit = await BusinessUnit.findOne();
+      const mainDishCategory = await Category.findOne({ name: "Main Dishes" });
+      const beveragesCategory = await Category.findOne({ name: "Beverages" });
+      const dessertsCategory = await Category.findOne({ name: "Desserts" });
+      const defaultCategory = await Category.findOne();
+
+      const templateProductionAreas = await Promise.all([
+        new ProductionArea({
+          name: "Kitchen",
+          description: "Main kitchen area for food preparation",
+          status: true,
+          businessUnit: businessUnit?._id,
+          preferredCategory: mainDishCategory?._id || defaultCategory?._id,
+          priority: 1
+        }).save(),
+        new ProductionArea({
+          name: "Bar",
+          description: "Bar area for drinks and beverages",
+          status: true,
+          businessUnit: businessUnit?._id,
+          preferredCategory: beveragesCategory?._id || defaultCategory?._id,
+          priority: 2
+        }).save(),
+        new ProductionArea({
+          name: "Dessert Station",
+          description: "Area for preparing desserts and sweets",
+          status: true,
+          businessUnit: businessUnit?._id,
+          preferredCategory: dessertsCategory?._id || defaultCategory?._id,
+          priority: 3
+        }).save(),
+      ]);
+
+      console.log("Production Areas created successfully");
+      console.log(templateProductionAreas);
+      return templateProductionAreas;
+    }
+    return await ProductionArea.find();
+  } catch (ex) {
+    console.log("Error creating production areas:", ex);
+    return [];
+  }
+};
+
 export const createDataSeed = async () => {
   try {
     // await cleanupDatabase();
@@ -312,8 +361,9 @@ export const createDataSeed = async () => {
     await createBusinessUnitSeed();
     await createCategorySeed();
     await createCurrencySeed();
+    await createProductionAreaSeed();
     await createComponentSeed();
-    await createProductSeed(); 
+    await createProductSeed();
     console.log(separator);
   } catch (ex) {
     console.log("Error seeding the data:", ex);
