@@ -9,7 +9,6 @@ export class ProductionAreaDTOIn {
   @IsBoolean() status!: boolean;
   @IsString({ each: true }) preferredCategory: string[] = []
   @IsNumber() @Min(0) priority!: number;
-  @IsString() businessUnit!: string
 }
 
 export class PartialProductionAreaDTOIn {
@@ -18,7 +17,6 @@ export class PartialProductionAreaDTOIn {
   @IsOptional() @IsBoolean() status?: boolean;
   @IsOptional() @IsString({ each: true }) preferredCategory: string[] = []
   @IsOptional() @IsNumber() @Min(0) priority?: number;
-  @IsOptional() @IsString() businessUnit?: string
 }
 
 export class ProductionAreaDTOOut {

@@ -64,8 +64,16 @@ export const getAllComponents = async (req: Request, res: Response) => {
 
 export const getComponentByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { componentID } = req.params;
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.componentRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND Component
     const ComponentByID = await repositoryHub.componentRepository.findById(
@@ -174,6 +182,9 @@ const createFilterByQueryParams = (req: Request) => {
 
 export const createComponent = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const {
       name,
@@ -182,8 +193,7 @@ export const createComponent = async (req: Request, res: Response) => {
       type,
       status,
       priceAsExtra,
-      currency,
-      businessUnit } = req.body;
+      currency } = req.body;
 
     //FORMAT COMPONENT
     const component = new Component({
@@ -194,8 +204,13 @@ export const createComponent = async (req: Request, res: Response) => {
       status,
       priceAsExtra,
       currency,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.componentRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //VALIDATE EXISTING COMPONENT
     const existingComponent = await repositoryHub.componentRepository.findByFilter({name});
@@ -223,6 +238,21 @@ export const createComponent = async (req: Request, res: Response) => {
 
 export const updateComponent = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.componentRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
+    if(existComponent == null){
+      ErrorResponse.NOT_FOUND(res, "Component");
+      return;
+    }
+
     //UPDATE Component
     const updateComponent = await repositoryHub.componentRepository.updateById(
       req.params.componentID,
@@ -230,13 +260,8 @@ export const updateComponent = async (req: Request, res: Response) => {
       componentBasicPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updateComponent == null) {
-      ErrorResponse.NOT_FOUND(res, "Component");
-      return;
-    }
     //MAP DTO
-    const componentDTO = mapperHub.componentMapper.toDTO(updateComponent);
+    const componentDTO = mapperHub.componentMapper.toDTO(updateComponent!!);
 
     //RETURN RESPOSNE
     SuccessResponse.UPDATE(res, componentDTO);
@@ -248,16 +273,25 @@ export const updateComponent = async (req: Request, res: Response) => {
 
 export const deleteComponent = async (req:Request, res:Response) => {
   try {
-    //GET AND DELETE THE ENTITY
-    const deleteEntity = await repositoryHub.componentRepository.deleteById(
-      req.params.componentID
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.componentRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
     );
 
     //VALIDATE IF EXIST
-    if (deleteEntity == false) {
+    const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
+    if(existComponent == null){
       ErrorResponse.NOT_FOUND(res, "Component");
       return;
     }
+
+    //GET AND DELETE THE ENTITY
+    await repositoryHub.componentRepository.deleteById(
+      req.params.componentID
+    );
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);

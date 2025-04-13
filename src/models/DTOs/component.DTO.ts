@@ -10,7 +10,6 @@ export class ComponentDTOIn {
   @IsString() image!: string;
   @IsEnum(ComponentType) type!: ComponentType;
   @IsBoolean() status: boolean = true;
-  @IsString() businessUnit!: string;
   @IsNumber() @Min(0) priceAsExtra!: number;
   @IsString() currency!: string;
 }
@@ -21,7 +20,6 @@ export class PartialComponentDTOIn {
   @IsOptional() @IsString() image?: string;
   @IsOptional() @IsEnum(ComponentType) type?: ComponentType;
   @IsOptional() @IsBoolean() status?: boolean;
-  @IsOptional() @IsString() businessUnit?: string;
   @IsOptional() @IsNumber() @Min(0) priceAsExtra?: number;
   @IsOptional() @IsString() currency?: string;
 }

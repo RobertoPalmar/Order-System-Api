@@ -11,7 +11,6 @@ export class CustomerDTOIn {
   @IsString() documentID!: string;
   @IsString() email!: string;
   @IsString() phone!: string;
-  @IsString() businessUnit!: string;
 }
 
 export class PartialCustomerDTOIn {
@@ -20,7 +19,6 @@ export class PartialCustomerDTOIn {
   @IsOptional() @IsString() documentID?: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() businessUnit?: string;
 }
 
 export class CustomerDTOOut {

@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import pkg from "../package.json";
-import businessUnitRoutes from "@routes/bussinesUnit.routes"
+import businessUnitRoutes from "@routes/businessUnit.routes"
 import productRoutes from "@routes/products.routes";
 import authRoutes from "@routes/auth.routes";
 import categoryRoutes from "@routes/category.routes"

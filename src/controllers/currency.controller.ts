@@ -65,8 +65,16 @@ export const getAllCurrencies = async (req: Request, res: Response) => {
 
 export const getCurrencyByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { CurrencyID } = req.params;
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.currencyRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND Currency
     const CurrencyByID = await repositoryHub.currencyRepository.findById(
@@ -150,8 +158,8 @@ export const getCurrencyBy = async (req: Request, res: Response) => {
 };
 
 const createFilterByQueryParams = (req: Request) => {
-  const { 
-    name,  
+  const {
+    name,
     ISO,
     symbol,
     exchangeRate,
@@ -171,14 +179,16 @@ const createFilterByQueryParams = (req: Request) => {
 
 export const createCurrency = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
-    const { 
-      name, 
+    const {
+      name,
       ISO,
       symbol,
       exchangeRate,
-      main,
-      businessUnit } = req.body;
+      main } = req.body;
 
     //FORMAT CURRENCY
     const currency = new Currency({
@@ -187,8 +197,13 @@ export const createCurrency = async (req: Request, res: Response) => {
       symbol,
       exchangeRate,
       main,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.currencyRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //VALIDATE EXISTING CURRENCY
     const existingCurrency = await repositoryHub.currencyRepository.findByFilter({name});
@@ -216,6 +231,21 @@ export const createCurrency = async (req: Request, res: Response) => {
 
 export const updateCurrency = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.currencyRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
+    if(existCurrency == null){
+      ErrorResponse.NOT_FOUND(res, "Currency");
+      return;
+    }
+
     //UPDATE Currency
     const updateCurrency = await repositoryHub.currencyRepository.updateById(
       req.params.currencyID,
@@ -223,13 +253,8 @@ export const updateCurrency = async (req: Request, res: Response) => {
       currencyBasicPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updateCurrency == null) {
-      ErrorResponse.NOT_FOUND(res, "Currency");
-      return;
-    }
     //MAP DTO
-    const currencyDTO = mapperHub.currencyMapper.toDTO(updateCurrency);
+    const currencyDTO = mapperHub.currencyMapper.toDTO(updateCurrency!!);
 
     //RETURN RESPOSNE
     SuccessResponse.UPDATE(res, currencyDTO);
@@ -241,16 +266,25 @@ export const updateCurrency = async (req: Request, res: Response) => {
 
 export const deleteCurrency = async (req:Request, res:Response) => {
   try {
-    //GET AND DELETE THE ENTITY
-    const deleteEntity = await repositoryHub.currencyRepository.deleteById(
-      req.params.currencyID
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.currencyRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
     );
 
     //VALIDATE IF EXIST
-    if (deleteEntity == false) {
+    const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
+    if(existCurrency == null){
       ErrorResponse.NOT_FOUND(res, "Currency");
       return;
     }
+
+    //GET AND DELETE THE ENTITY
+    await repositoryHub.currencyRepository.deleteById(
+      req.params.currencyID
+    );
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);

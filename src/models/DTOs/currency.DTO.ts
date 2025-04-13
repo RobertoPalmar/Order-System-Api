@@ -8,7 +8,6 @@ export class CurrencyDTOIn {
   @IsString() symbol!: string;
   @IsNumber() @Min(0) exchangeRate!: number;
   @IsBoolean() main: boolean = false;
-  @IsString() businessUnit!: string;
 }
 
 export class PartialCurrencyDTOIn {
@@ -17,7 +16,6 @@ export class PartialCurrencyDTOIn {
   @IsOptional() @IsString() symbol?: string;
   @IsOptional() @IsNumber() @Min(0) exchangeRate?: number;
   @IsOptional() @IsBoolean() main?: boolean;
-  @IsOptional() @IsString() businessUnit?: string;
 }
 
 export class CurrencyDTOOut {

@@ -156,8 +156,16 @@ const createFilterByQueryParams = (req: Request): any => {
 
 export const getProductByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { productID } = req.params;
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND PRODUCT
     const productByID = await repositoryHub.productRepository.findById(
@@ -184,6 +192,9 @@ export const getProductByID = async (req: Request, res: Response) => {
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const {
       name,
@@ -196,7 +207,6 @@ export const createProduct = async (req: Request, res: Response) => {
       currency,
       status,
       productArea,
-      businessUnit,
     } = req.body;
 
     //FORMAT PRODUCT
@@ -211,8 +221,13 @@ export const createProduct = async (req: Request, res: Response) => {
       currency,
       status,
       productArea,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //CREATE PRODUCT
     const newProduct = await repositoryHub.productRepository.create(
@@ -233,8 +248,23 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     if(isNullOrEmpty(req.params.productID)){
       ErrorResponse.INVALID_FIELD(res,"productID","The value cannot be null or empty")
+      return;
+    }
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existProduct = await repositoryHub.productRepository.findById(req.params.productID);
+    if(existProduct == null){
+      ErrorResponse.NOT_FOUND(res, "Product");
       return;
     }
 
@@ -245,13 +275,8 @@ export const updateProduct = async (req: Request, res: Response) => {
       productTotalPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updateProduct == null) {
-      ErrorResponse.NOT_FOUND(res, "Product");
-      return;
-    }
     //MAP DTO
-    const productDTO = mapperHub.productMapper.toDTO(updateProduct);
+    const productDTO = mapperHub.productMapper.toDTO(updateProduct!!);
 
     //RETURN RESPOSNE
     SuccessResponse.UPDATE(res, productDTO);
@@ -263,16 +288,25 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
-    //GET AND DELETE THE ENTITY
-    const deleteEntity = await repositoryHub.productRepository.deleteById(
-      req.params.productID
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
     );
 
     //VALIDATE IF EXIST
-    if (deleteEntity == false) {
+    const existProduct = await repositoryHub.productRepository.findById(req.params.productID);
+    if(existProduct == null){
       ErrorResponse.NOT_FOUND(res, "Product");
       return;
     }
+
+    //GET AND DELETE THE ENTITY
+    await repositoryHub.productRepository.deleteById(
+      req.params.productID
+    );
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);

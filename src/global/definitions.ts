@@ -116,3 +116,10 @@ export const productionAreaBasicPopulate = [
     select: "id name",
   },
 ];
+
+export const businessUnitBasicPopulate = [
+  {
+    path: "owner",
+    select: "id name email",
+  },
+];

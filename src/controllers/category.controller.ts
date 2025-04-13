@@ -27,7 +27,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
       return;
     }
 
-    //SET BUSINESSUNIT FILTER
+    //SET CATEGORY FILTER
     repositoryHub.categoryRepository.setBusinessUnitFilter(
       tokenData.businessUnitID
     );
@@ -64,8 +64,16 @@ export const getAllCategories = async (req: Request, res: Response) => {
 
 export const getCategoryByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { categoryID } = req.params;
+
+    //SET CATEGORY FILTER
+    repositoryHub.categoryRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND CATEGORY
     const categoryByID = await repositoryHub.categoryRepository.findById(
@@ -108,7 +116,7 @@ export const getCategoryBy = async (req: Request, res: Response) => {
       return;
     }
 
-    //SET BUSINESSUNIT FILTER
+    //SET CATEGORY FILTER
     repositoryHub.categoryRepository.setBusinessUnitFilter(
       tokenData.businessUnitID
     );
@@ -162,20 +170,33 @@ const createFilterByQueryParams = (req: Request) => {
 
 export const createCategory = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
-    const { name, description, businessUnit } = req.body;
+    const { name, description } = req.body;
 
     //FORMAT CATEGORY
     const category = new Category({
       name,
       description,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
 
+    //SET CATEGORY FILTER
+    repositoryHub.categoryRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
     //VALIDATE EXISTING CATEGORY
-    const existingCategory = await repositoryHub.categoryRepository.findByFilter({name});
-    if(existingCategory.data.length > 0){
-      ErrorResponse.INVALID_FIELD(res,"name","this categoryName is already in use")
+    const existingCategory =
+      await repositoryHub.categoryRepository.findByFilter({ name });
+    if (existingCategory.data.length > 0) {
+      ErrorResponse.INVALID_FIELD(
+        res,
+        "name",
+        "this categoryName is already in use"
+      );
       return;
     }
 
@@ -198,6 +219,21 @@ export const createCategory = async (req: Request, res: Response) => {
 
 export const updateCategory = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.categoryRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
+    if(existCategory == null){
+      ErrorResponse.NOT_FOUND(res, "category");
+      return;
+    }
+
     //UPDATE CATEGORY
     const updatecategory = await repositoryHub.categoryRepository.updateById(
       req.params.categoryID,
@@ -205,13 +241,8 @@ export const updateCategory = async (req: Request, res: Response) => {
       categoryBasicPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updatecategory == null) {
-      ErrorResponse.NOT_FOUND(res, "category");
-      return;
-    }
     //MAP DTO
-    const categoryDTO = mapperHub.categoryMapper.toDTO(updatecategory);
+    const categoryDTO = mapperHub.categoryMapper.toDTO(updatecategory!!);
 
     //RETURN RESPOSNE
     SuccessResponse.UPDATE(res, categoryDTO);
@@ -221,18 +252,27 @@ export const updateCategory = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteCategory = async (req:Request, res:Response) => {
+export const deleteCategory = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.categoryRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
+    if(existCategory == null){
+      ErrorResponse.NOT_FOUND(res, "category");
+      return;
+    }
+
     //GET AND DELETE THE ENTITY
     const deleteEntity = await repositoryHub.categoryRepository.deleteById(
       req.params.categoryID
     );
-
-    //VALIDATE IF EXIST
-    if (deleteEntity == false) {
-      ErrorResponse.NOT_FOUND(res, "category");
-      return;
-    }
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);
@@ -240,4 +280,4 @@ export const deleteCategory = async (req:Request, res:Response) => {
     console.log("❌ Error in deleteCategory:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
-}
+};

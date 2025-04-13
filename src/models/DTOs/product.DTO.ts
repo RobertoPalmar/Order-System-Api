@@ -22,7 +22,6 @@ export class ProductDTOIn {
   @IsString() currency!: string;
   @IsBoolean() status: boolean = true;
   @IsString() @IsOptional() productArea?: string;
-  @IsString() businessUnit!: string;
 }
 
 export class PartialProductDTOIn {

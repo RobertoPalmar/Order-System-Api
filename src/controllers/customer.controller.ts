@@ -64,8 +64,16 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 
 export const getCustomerByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { customerID } = req.params;
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.customerRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND CUSTOMER
     const customerByID = await repositoryHub.customerRepository.findById(
@@ -164,8 +172,11 @@ const createFilterByQueryParams = (req: Request) => {
 
 export const createCustomer = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
-    const { firstName, lastName, documentID, email, phone, businessUnit } = req.body;
+    const { firstName, lastName, documentID, email, phone } = req.body;
 
     //FORMAT CUSTOMER
     const customer = new Customer({
@@ -174,8 +185,13 @@ export const createCustomer = async (req: Request, res: Response) => {
       documentID,
       email,
       phone,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.customerRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //VALIDATE EXISTING CUSTOMER
     const existingCustomer = await repositoryHub.customerRepository.findByFilter({documentID});
@@ -203,6 +219,21 @@ export const createCustomer = async (req: Request, res: Response) => {
 
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.customerRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
+    if(existCustomer == null){
+      ErrorResponse.NOT_FOUND(res, "Customer");
+      return;
+    }
+
     //UPDATE CUSTOMER
     const updatedCustomer = await repositoryHub.customerRepository.updateById(
       req.params.customerID,
@@ -210,13 +241,8 @@ export const updateCustomer = async (req: Request, res: Response) => {
       customerBasicPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updatedCustomer == null) {
-      ErrorResponse.NOT_FOUND(res, "Customer");
-      return;
-    }
     //MAP DTO
-    const customerDTO = mapperHub.customerMapper.toDTO(updatedCustomer);
+    const customerDTO = mapperHub.customerMapper.toDTO(updatedCustomer!!);
 
     //RETURN RESPONSE
     SuccessResponse.UPDATE(res, customerDTO);
@@ -228,16 +254,25 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
 export const deleteCustomer = async (req:Request, res:Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.customerRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
+    if(existCustomer == null){
+      ErrorResponse.NOT_FOUND(res, "Customer");
+      return;
+    }
+
     //GET AND DELETE THE ENTITY
     const deleteEntity = await repositoryHub.customerRepository.deleteById(
       req.params.customerID
     );
-
-    //VALIDATE IF EXIST
-    if (deleteEntity == false) {
-      ErrorResponse.NOT_FOUND(res, "Customer");
-      return;
-    }
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);

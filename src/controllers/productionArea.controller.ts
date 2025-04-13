@@ -64,8 +64,16 @@ export const getAllProductionAreas = async (req: Request, res: Response) => {
 
 export const getProductionAreaByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
     const { productionAreaID } = req.params;
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //FIND PRODUCTION AREA
     const productionAreaByID = await repositoryHub.productionAreaRepository.findById(
@@ -164,8 +172,11 @@ const createFilterByQueryParams = (req: Request) => {
 
 export const createProductionArea = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
     //GET PARAMS
-    const { name, description, status, preferredCategory, priority, businessUnit } = req.body;
+    const { name, description, status, preferredCategory, priority } = req.body;
 
     //FORMAT PRODUCTION AREA
     const productionArea = new ProductionArea({
@@ -174,8 +185,13 @@ export const createProductionArea = async (req: Request, res: Response) => {
       status,
       preferredCategory,
       priority,
-      businessUnit,
+      businessUnit: tokenData.businessUnitID,
     });
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
 
     //VALIDATE EXISTING PRODUCTION AREA
     const existingProductionArea = await repositoryHub.productionAreaRepository.findByFilter({name});
@@ -203,6 +219,21 @@ export const createProductionArea = async (req: Request, res: Response) => {
 
 export const updateProductionArea = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
+    );
+
+    //VALIDATE IF EXIST
+    const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
+    if(existProductionArea == null){
+      ErrorResponse.NOT_FOUND(res, "Production Area");
+      return;
+    }
+
     //UPDATE PRODUCTION AREA
     const updatedProductionArea = await repositoryHub.productionAreaRepository.updateById(
       req.params.productionAreaID,
@@ -210,13 +241,8 @@ export const updateProductionArea = async (req: Request, res: Response) => {
       productionAreaBasicPopulate
     );
 
-    //VALIDATE IF EXIST
-    if (updatedProductionArea == null) {
-      ErrorResponse.NOT_FOUND(res, "Production Area");
-      return;
-    }
     //MAP DTO
-    const productionAreaDTO = mapperHub.productionAreaMapper.toDTO(updatedProductionArea);
+    const productionAreaDTO = mapperHub.productionAreaMapper.toDTO(updatedProductionArea!!);
 
     //RETURN RESPONSE
     SuccessResponse.UPDATE(res, productionAreaDTO);
@@ -228,16 +254,25 @@ export const updateProductionArea = async (req: Request, res: Response) => {
 
 export const deleteProductionArea = async (req:Request, res:Response) => {
   try {
-    //GET AND DELETE THE ENTITY
-    const deleteEntity = await repositoryHub.productionAreaRepository.deleteById(
-      req.params.productionAreaID
+    //GET TOKEN DATA
+    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+
+    //SET BUSINESSUNIT FILTER
+    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
+      tokenData.businessUnitID
     );
 
     //VALIDATE IF EXIST
-    if (deleteEntity == false) {
+    const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
+    if(existProductionArea == null){
       ErrorResponse.NOT_FOUND(res, "Production Area");
       return;
     }
+
+    //GET AND DELETE THE ENTITY
+    await repositoryHub.productionAreaRepository.deleteById(
+      req.params.productionAreaID
+    );
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);
