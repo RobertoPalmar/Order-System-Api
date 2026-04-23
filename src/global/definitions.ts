@@ -123,3 +123,10 @@ export const businessUnitBasicPopulate = [
     select: "id name email",
   },
 ];
+
+export const orderPopulate = [
+  {
+    path: "businessUnit",
+    select: "id name",
+  }
+];

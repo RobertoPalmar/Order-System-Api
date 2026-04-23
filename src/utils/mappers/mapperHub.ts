@@ -15,6 +15,10 @@ import { IUser } from "@models/database/user.model"
 import { UserDTOOut } from "@models/DTOs/user.DTO"
 import { IProductionArea } from "@models/database/productionArea.model"
 import { ProductionAreaDTOOut } from "@models/DTOs/productionArea.DTO"
+import { OrderDetailDTOOut, OrderDTOOut } from "@models/DTOs/order.DTO"
+import { IOrder } from "@models/database/order.model"
+import { IMembership } from "@models/database/membership.model"
+import { MembershipDTOOut } from "@models/DTOs/membership.DTO"
 
 class MapperHub{
   productMapper:BaseMapper<IProduct,ProductDTOOut>
@@ -25,6 +29,8 @@ class MapperHub{
   customerMapper:BaseMapper<ICustomer,CustomerDTOOut>
   userMapper:BaseMapper<IUser,UserDTOOut>
   productionAreaMapper:BaseMapper<IProductionArea,ProductionAreaDTOOut>
+  orderMapper:BaseMapper<IOrder,OrderDTOOut>
+  membershipMapper:BaseMapper<IMembership,MembershipDTOOut>
 
   constructor(){
     this.productMapper = new BaseMapper<IProduct,ProductDTOOut>(ProductDTOOut)
@@ -35,6 +41,8 @@ class MapperHub{
     this.customerMapper = new BaseMapper<ICustomer,CustomerDTOOut>(CustomerDTOOut)
     this.userMapper = new BaseMapper<IUser,UserDTOOut>(UserDTOOut)
     this.productionAreaMapper = new BaseMapper<IProductionArea,ProductionAreaDTOOut>(ProductionAreaDTOOut)
+    this.orderMapper = new BaseMapper<IOrder, OrderDTOOut>(OrderDTOOut);
+    this.membershipMapper = new BaseMapper<IMembership,MembershipDTOOut>(MembershipDTOOut)
   }
 }
 

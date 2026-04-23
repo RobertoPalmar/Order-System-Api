@@ -1,18 +1,23 @@
-import { BusinessUnit, IBusinessUnit } from "@models/database/businessUnit.model";
+import mongoose from "mongoose";
+import {
+  BusinessUnit,
+  IBusinessUnit,
+} from "@models/database/businessUnit.model";
+import { Membership } from "@models/database/membership.model";
 import { Pagination } from "@models/response/pagination.model";
 import { getPaginationParams } from "@utils/functions.utils";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import { Request, Response } from "express";
 import { repositoryHub } from "@repositories/repositoryHub";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { BusinessUnitDTOOut } from "@models/DTOs/businessUnit.DTO";
-import { businessUnitBasicPopulate } from "@global/definitions";
+import { businessUnitBasicPopulate, UserRole } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 
 export const getAllBusinessUnit = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
@@ -29,7 +34,11 @@ export const getAllBusinessUnit = async (req: Request, res: Response) => {
 
     //GET BUSINESS UNIT LIST
     const { data, total, totalPages } =
-      await repositoryHub.businessUnitRepository.findAllPaginated(page, limit, businessUnitBasicPopulate);
+      await repositoryHub.businessUnitRepository.findAllPaginated(
+        page,
+        limit,
+        businessUnitBasicPopulate
+      );
 
     //MAP THE LIST DATA
     const businessUnitDTOList = mapperHub.businessUnitMapper.toDTOList(data);
@@ -59,10 +68,11 @@ export const getBusinessUnitByID = async (req: Request, res: Response) => {
     const { businessUnitID } = req.params;
 
     //FIND BUSINESS UNIT
-    const BusinessUnitByID = await repositoryHub.businessUnitRepository.findById(
-      businessUnitID,
-      businessUnitBasicPopulate
-    );
+    const BusinessUnitByID =
+      await repositoryHub.businessUnitRepository.findById(
+        businessUnitID,
+        businessUnitBasicPopulate
+      );
 
     //VALIDATE IS BUSINESS UNIT EXIST
     if (BusinessUnitByID == null) {
@@ -71,7 +81,8 @@ export const getBusinessUnitByID = async (req: Request, res: Response) => {
     }
 
     //MAP THE DATA
-    const BusinessUnitDTO = mapperHub.businessUnitMapper.toDTO(BusinessUnitByID);
+    const BusinessUnitDTO =
+      mapperHub.businessUnitMapper.toDTO(BusinessUnitByID);
 
     //RETURN THE RESPONSE
     SuccessResponse.GET(res, BusinessUnitDTO);
@@ -84,7 +95,7 @@ export const getBusinessUnitByID = async (req: Request, res: Response) => {
 export const getBusinessUnitBy = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
@@ -135,53 +146,88 @@ export const getBusinessUnitBy = async (req: Request, res: Response) => {
 };
 
 const createFilterByQueryParams = (req: Request) => {
-  const {
-    name,
-    description,
-    owner
-  } = req.query;
+  const { name, description, owner } = req.query;
   let filter: any = {};
 
   //FILTER PROPERTY
   if (name) filter.name = { $regex: name as string, $options: "i" };
-  if (description) filter.description = { $regex: description as string, $options: "i" };
-  if(owner) filter.owner = owner;
+  if (description)
+    filter.description = { $regex: description as string, $options: "i" };
+  if (owner) filter.owner = owner;
 
   return filter;
 };
 
 export const createBusinessUnit = async (req: Request, res: Response) => {
   try {
-     //GET TOKEN DATA
-     const tokenData = TokenUtils.getTokenDataFromHeaders(req);
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
 
-    //GET PARAMS
-    const { 
-      name, 
-      description } = req.body;
+    const currentUser = await repositoryHub.userRepository.findById(ctx.userID);
 
-    //FORMAT BUSINESS UNIT
-    const businessUnit = new BusinessUnit({
-      name,
-      description,
-      owner: tokenData.userID
-    });
-
-    //VALIDATE EXISTING BUSINESS UNIT
-    const existingBusinessUnit = await repositoryHub.businessUnitRepository.findByFilter({name});
-    if(existingBusinessUnit.data.length > 0){
-      ErrorResponse.INVALID_FIELD(res,"name","this BusinessUnitName is already in use")
+    //VALIDATE USER
+    if(currentUser == null){
+      ErrorResponse.INVALID_USER_REQUEST(res);
       return;
     }
 
-    //CREATE BUSINESS UNIT
-    const newBusinessUnit = await repositoryHub.businessUnitRepository.create(
-      businessUnit,
-      businessUnitBasicPopulate
-    );
+    const businessUnitPerUser = await repositoryHub.businessUnitRepository.findByFilter({owner:currentUser.id});
 
-    //MAP ENTITY
-    const BusinessUnitDTO = mapperHub.businessUnitMapper.toDTO(newBusinessUnit);
+    //VALIDATE BUSINESS COUNT
+    if(currentUser.validBusinessUnit <= businessUnitPerUser.total){
+      ErrorResponse.USER_EXCEEDS_THE_BUSINESS_UNIT_VALID(res, currentUser.validBusinessUnit);
+      return;
+    }
+
+    //GET PARAMS
+    const { name, description } = req.body;
+
+    //VALIDATE EXISTING BUSINESS UNIT
+    const existingBusinessUnit =
+      await repositoryHub.businessUnitRepository.findByFilter({ name });
+    if (existingBusinessUnit.data.length > 0) {
+      ErrorResponse.INVALID_FIELD(
+        res,
+        "name",
+        "this BusinessUnitName is already in use"
+      );
+      return;
+    }
+
+    //CREATE BUSINESS UNIT + AUTO-GRANT ADMIN MEMBERSHIP (TRANSACTIONAL)
+    const session = await mongoose.startSession();
+    let newBusinessUnitID: mongoose.Types.ObjectId;
+    try {
+      session.startTransaction();
+
+      const newBU = await new BusinessUnit({
+        name,
+        description,
+        owner: ctx.userID,
+      }).save({ session });
+
+      await new Membership({
+        user: ctx.userID,
+        businessUnit: newBU._id,
+        role: UserRole.ADMIN,
+        status: true,
+      }).save({ session });
+
+      await session.commitTransaction();
+      newBusinessUnitID = newBU._id as mongoose.Types.ObjectId;
+    } catch (ex) {
+      await session.abortTransaction();
+      throw ex;
+    } finally {
+      session.endSession();
+    }
+
+    //POPULATE AND MAP ENTITY
+    const populatedBusinessUnit = await BusinessUnit.findById(newBusinessUnitID)
+      .populate(businessUnitBasicPopulate)
+      .exec();
+
+    const BusinessUnitDTO = mapperHub.businessUnitMapper.toDTO(populatedBusinessUnit as IBusinessUnit);
 
     //RETURN THE RESPONSE
     SuccessResponse.CREATION(res, BusinessUnitDTO);
@@ -193,12 +239,22 @@ export const createBusinessUnit = async (req: Request, res: Response) => {
 
 export const updateBusinessUnit = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
+    //CROSS-BU GUARD
+    if (req.params.businessUnitID !== ctx.businessUnitID) {
+      ErrorResponse.FORBIDDEN(res, "BusinessUnit scope mismatch");
+      return;
+    }
+
     //UPDATE BusinessUnit
-    const updateBusinessUnit = await repositoryHub.businessUnitRepository.updateById(
-      req.params.businessUnitID,
-      req.body,
-      businessUnitBasicPopulate
-    );
+    const updateBusinessUnit =
+      await repositoryHub.businessUnitRepository.updateById(
+        req.params.businessUnitID,
+        req.body,
+        businessUnitBasicPopulate
+      );
 
     //VALIDATE IF EXIST
     if (updateBusinessUnit == null) {
@@ -206,7 +262,8 @@ export const updateBusinessUnit = async (req: Request, res: Response) => {
       return;
     }
     //MAP DTO
-    const businessUnitDTO = mapperHub.businessUnitMapper.toDTO(updateBusinessUnit);
+    const businessUnitDTO =
+      mapperHub.businessUnitMapper.toDTO(updateBusinessUnit);
 
     //RETURN RESPOSNE
     SuccessResponse.UPDATE(res, businessUnitDTO);
@@ -216,8 +273,17 @@ export const updateBusinessUnit = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteBusinessUnit = async (req:Request, res:Response) => {
+export const deleteBusinessUnit = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
+    //CROSS-BU GUARD
+    if (req.params.businessUnitID !== ctx.businessUnitID) {
+      ErrorResponse.FORBIDDEN(res, "BusinessUnit scope mismatch");
+      return;
+    }
+
     //GET AND DELETE THE ENTITY
     const deleteEntity = await repositoryHub.businessUnitRepository.deleteById(
       req.params.businessUnitID
@@ -235,5 +301,4 @@ export const deleteBusinessUnit = async (req:Request, res:Response) => {
     console.log("❌ Error in deleteBusinessUnit:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
-}
-
+};

@@ -2,21 +2,18 @@ import {
   productBasicPopulate,
   productTotalPopulate,
 } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { Product } from "@models/database/product.model";
 import { ProductDTOOut } from "@models/DTOs/product.DTO";
 import { Pagination } from "@models/response/pagination.model";
 import { getPaginationParams, isNullOrEmpty } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import { Request, Response } from "express";
 import { repositoryHub } from "src/repositories/repositoryHub";
 
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -29,11 +26,6 @@ export const getAllProducts = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET PRODUCT LIST
     const { data, total, totalPages } =
@@ -67,9 +59,6 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 export const getProductBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -82,11 +71,6 @@ export const getProductBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -156,16 +140,8 @@ const createFilterByQueryParams = (req: Request): any => {
 
 export const getProductByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { productID } = req.params;
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND PRODUCT
     const productByID = await repositoryHub.productRepository.findById(
@@ -193,7 +169,7 @@ export const getProductByID = async (req: Request, res: Response) => {
 export const createProduct = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const {
@@ -221,13 +197,8 @@ export const createProduct = async (req: Request, res: Response) => {
       currency,
       status,
       productArea,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //CREATE PRODUCT
     const newProduct = await repositoryHub.productRepository.create(
@@ -248,18 +219,10 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     if(isNullOrEmpty(req.params.productID)){
       ErrorResponse.INVALID_FIELD(res,"productID","The value cannot be null or empty")
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE IF EXIST
     const existProduct = await repositoryHub.productRepository.findById(req.params.productID);
@@ -288,14 +251,6 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existProduct = await repositoryHub.productRepository.findById(req.params.productID);
     if(existProduct == null){

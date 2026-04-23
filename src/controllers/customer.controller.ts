@@ -1,4 +1,5 @@
 import { customerBasicPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { Customer } from "@models/database/customer.model";
 import { CustomerDTOOut } from "@models/DTOs/customer.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -6,14 +7,10 @@ import { repositoryHub } from "@repositories/repositoryHub";
 import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import { Request, Response } from "express";
 
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -26,11 +23,6 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET CUSTOMER LIST
     const { data, total, totalPages } =
@@ -64,16 +56,8 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 
 export const getCustomerByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { customerID } = req.params;
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND CUSTOMER
     const customerByID = await repositoryHub.customerRepository.findById(
@@ -100,9 +84,6 @@ export const getCustomerByID = async (req: Request, res: Response) => {
 
 export const getCustomerBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -115,11 +96,6 @@ export const getCustomerBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -173,7 +149,7 @@ const createFilterByQueryParams = (req: Request) => {
 export const createCustomer = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const { firstName, lastName, documentID, email, phone } = req.body;
@@ -185,13 +161,8 @@ export const createCustomer = async (req: Request, res: Response) => {
       documentID,
       email,
       phone,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE EXISTING CUSTOMER
     const existingCustomer = await repositoryHub.customerRepository.findByFilter({documentID});
@@ -219,14 +190,6 @@ export const createCustomer = async (req: Request, res: Response) => {
 
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
     if(existCustomer == null){
@@ -254,14 +217,6 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
 export const deleteCustomer = async (req:Request, res:Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.customerRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
     if(existCustomer == null){

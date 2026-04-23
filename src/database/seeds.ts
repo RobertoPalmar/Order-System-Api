@@ -4,11 +4,14 @@ import { Currency } from "@models/database/currency.model";
 import { Product } from "@models/database/product.model";
 import { ProductionArea } from "@models/database/productionArea.model";
 import { User } from "@models/database/user.model";
-import { ComponentType, UserRole } from "@global/definitions";
+import { ComponentType, OrderStatus, OrderType, UserRole } from "@global/definitions";
 import EncryptUtils from "@utils/encrypt.utils";
 import { repositoryHub } from "src/repositories/repositoryHub";
 import { Component } from "@models/database/component.model";
 import { separator } from "@global/logs";
+import { Customer } from "@models/database/customer.model";
+import { Order } from "@models/database/order.model";
+import { Membership } from "@models/database/membership.model";
 
 const createCategorySeed = async () => {
   try {
@@ -192,7 +195,6 @@ const createUserSeed = async () => {
           name: "Admin Restaurant",
           email: "admin.restaurant@demo.com",
           password: await EncryptUtils.encryptString("admin123"),
-          role: UserRole.ADMIN,
           status: true,
         }).save(),
 
@@ -200,7 +202,6 @@ const createUserSeed = async () => {
           name: "Admin Coffee",
           email: "admin.coffee@demo.com",
           password: await EncryptUtils.encryptString("admin123"),
-          role: UserRole.ADMIN,
           status: true,
         }).save(),
       ]);
@@ -255,11 +256,55 @@ const cleanupDatabase = async () => {
       Currency.deleteMany({}),
       Product.deleteMany({}),
       ProductionArea.deleteMany({}),
+      Customer.deleteMany({}),
+      Order.deleteMany({}),
+      Membership.deleteMany({}),
     ]);
     console.log(separator);
     console.log("Database cleaned successfully");
   } catch (ex) {
     console.log("Error cleaning database:", ex);
+  }
+};
+
+const createMembershipSeed = async () => {
+  try {
+    const pairs: { email: string; businessUnitName: string }[] = [
+      { email: "admin.restaurant@demo.com", businessUnitName: "Restaurant Demo" },
+      { email: "admin.coffee@demo.com", businessUnitName: "Coffee Shop Demo" },
+    ];
+
+    const created: any[] = [];
+
+    for (const pair of pairs) {
+      const user = await User.findOne({ email: pair.email });
+      const businessUnit = await BusinessUnit.findOne({ name: pair.businessUnitName });
+
+      if (!user || !businessUnit) continue;
+
+      //IDEMPOTENT: SKIP IF MEMBERSHIP ALREADY EXISTS
+      const existing = await Membership.findOne({
+        user: user._id,
+        businessUnit: businessUnit._id,
+      });
+      if (existing) continue;
+
+      const membership = await new Membership({
+        user: user._id,
+        businessUnit: businessUnit._id,
+        role: UserRole.ADMIN,
+        status: true,
+      }).save();
+
+      created.push(membership);
+    }
+
+    if (created.length > 0) {
+      console.log("Memberships created successfully");
+      console.log(created);
+    }
+  } catch (ex) {
+    console.log("Error creating memberships:", ex);
   }
 };
 
@@ -354,16 +399,166 @@ const createProductionAreaSeed = async () => {
   }
 };
 
+const createCustomerSeed = async () => {
+  try {
+    const existCustomers = (await Customer.estimatedDocumentCount()) > 0;
+
+    if (!existCustomers) {
+      const businessUnit = await BusinessUnit.findOne();
+
+      const templateCustomers = await Promise.all([
+        new Customer({
+          firstName: "John",
+          lastName: "Doe",
+          documentID: "123456789",
+          email: "john.doe@example.com",
+          phone: "555-123-4567",
+          businessUnit: businessUnit?._id,
+        }).save(),
+
+        new Customer({
+          firstName: "Jane",
+          lastName: "Smith",
+          documentID: "987654321",
+          email: "jane.smith@example.com",
+          phone: "555-987-6543",
+          businessUnit: businessUnit?._id,
+        }).save(),
+
+        new Customer({
+          firstName: "Robert",
+          lastName: "Johnson",
+          documentID: "456789123",
+          email: "robert.johnson@example.com",
+          phone: "555-456-7890",
+          businessUnit: businessUnit?._id,
+        }).save(),
+      ]);
+
+      console.log("Customers created successfully");
+      console.log(templateCustomers);
+      return templateCustomers;
+    }
+    return await Customer.find();
+  } catch (ex) {
+    console.log("Error creating customers:", ex);
+    return [];
+  }
+};
+
+const createOrderSeed = async () => {
+  try {
+    const existOrders = (await Order.estimatedDocumentCount()) > 0;
+
+    if (!existOrders) {
+      const businessUnit = await BusinessUnit.findOne();
+      const currency = await Currency.findOne();
+      const customers = await Customer.find().limit(3);
+      const admin = await User.findOne({ email: "admin.restaurant@demo.com" });
+      const products = await Product.find().limit(5);
+      const components = await Component.find();
+
+      if (customers.length === 0 || !admin || products.length === 0 || !businessUnit || !currency) {
+        console.log("Missing required data for order seed");
+        return [];
+      }
+
+      // Create order details for the first order
+      const orderDetails1 = [
+        {
+          product: products[0],
+          quantity: 2,
+          unitPrice: products[0].price,
+          totalPrice: products[0].price * 2,
+          extras: [components[0]],
+          removed: [components[1]],
+        },
+        {
+          product: products[1],
+          quantity: 1,
+          unitPrice: products[1].price,
+          totalPrice: products[1].price,
+          extras: [],
+          removed: [],
+        },
+      ];
+
+      // Create order details for the second order
+      const orderDetails2 = [
+        {
+          product: products[2],
+          quantity: 1,
+          unitPrice: products[2].price,
+          totalPrice: products[2].price,
+          extras: [],
+          removed: [],
+        },
+        {
+          product: products[3],
+          quantity: 3,
+          unitPrice: products[3].price,
+          totalPrice: products[3].price * 3,
+          extras: [],
+          removed: [],
+        },
+      ];
+
+      // Calculate total amount for each order
+      const totalAmount1 = orderDetails1.reduce((sum, detail) => sum + detail.totalPrice, 0);
+      const totalAmount2 = orderDetails2.reduce((sum, detail) => sum + detail.totalPrice, 0);
+
+      const templateOrders = await Promise.all([
+        new Order({
+          code: "ORD-001",
+          description: "Dine-in order for table 5",
+          status: OrderStatus.COMPLETED, // OrderStatus.COMPLETED
+          type: OrderType.DINE_IN, // OrderType.DINE_IN
+          businessUnit: businessUnit._id,
+          customer: customers[0],
+          owner: admin,
+          amount: totalAmount1,
+          currency: currency,
+          details: orderDetails1,
+        }).save(),
+
+        new Order({
+          code: "ORD-002",
+          description: "Take-away order",
+          status: 2, // OrderStatus.IN_PROGRESS
+          type: 1, // OrderType.TAKE_AWAY
+          businessUnit: businessUnit._id,
+          customer: customers[1],
+          owner: admin,
+          amount: totalAmount2,
+          currency: currency,
+          details: orderDetails2,
+        }).save(),
+      ]);
+
+      console.log("Orders created successfully");
+      console.log(templateOrders);
+      return templateOrders;
+    }
+    return await Order.find();
+  } catch (ex) {
+    console.log("Error creating orders:", ex);
+    return [];
+  }
+};
+
 export const createDataSeed = async () => {
   try {
-    // await cleanupDatabase();
+    await cleanupDatabase();
     await createUserSeed();
     await createBusinessUnitSeed();
+    await createMembershipSeed();
     await createCategorySeed();
     await createCurrencySeed();
     await createProductionAreaSeed();
     await createComponentSeed();
     await createProductSeed();
+    await createCustomerSeed();
+    await createOrderSeed();
     console.log(separator);
   } catch (ex) {
     console.log("Error seeding the data:", ex);

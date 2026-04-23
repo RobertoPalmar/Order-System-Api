@@ -48,7 +48,6 @@ export class ProductDTOOut {
   @Expose() cost: number;
   @Expose() @Type(() => CurrencyDTOOut) currency: CurrencyDTOOut;
   @Expose() status: boolean;
-  // productArea: Types.ObjectId | IProductionArea;
   @Expose() @Type(() => BusinessUnitDTOOut) businessUnit: BusinessUnitDTOOut;
 
   constructor(

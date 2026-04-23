@@ -3,6 +3,9 @@ import { validateAuth, validateBusinessAuth } from "src/middlewares/auth.middlew
 import * as BusinessUnitController from "@controllers/businessUnit.controller"
 import { validateBody } from "src/middlewares/validation.middleware";
 import { BusinessUnitDTOIn, PartialBusinessUnitDTOIn } from "@models/DTOs/businessUnit.DTO";
+import { requireRole } from "src/middlewares/requireRole.middleware";
+import { UserRole } from "@global/definitions";
+import membershipRoutes from "./membership.routes";
 
 const router = Router()
 
@@ -10,7 +13,9 @@ router.get('/getAllBusinessUnit', validateAuth, BusinessUnitController.getAllBus
 router.get('/getBusinessUnitByID/:businessUnitID', validateAuth, BusinessUnitController.getBusinessUnitByID);
 router.get('/getBusinessUnitsBy', validateAuth, BusinessUnitController.getBusinessUnitBy);
 router.post('/createBusinessUnit', validateAuth, validateBody(BusinessUnitDTOIn), BusinessUnitController.createBusinessUnit);
-router.put('/updateBusinessUnit/:businessUnitID', validateAuth,  validateBody(PartialBusinessUnitDTOIn), BusinessUnitController.updateBusinessUnit);
-router.delete('/deleteBusinessUnit/:businessUnitID', validateAuth, BusinessUnitController.deleteBusinessUnit);
+router.put('/updateBusinessUnit/:businessUnitID', validateBusinessAuth, requireRole(UserRole.ADMIN), validateBody(PartialBusinessUnitDTOIn), BusinessUnitController.updateBusinessUnit);
+router.delete('/deleteBusinessUnit/:businessUnitID', validateBusinessAuth, requireRole(UserRole.ADMIN), BusinessUnitController.deleteBusinessUnit);
+
+router.use("/:businessUnitID/members", membershipRoutes);
 
 export default router;

@@ -134,12 +134,41 @@ export class ErrorResponse {
     this.set(res, 4012, "Authentication token has expired", 401);
   }
 
-  static VALIDATION_ERROR<T>(res: Response, errorData: T): void {
-    this.setWithData(res, 4013, "Validation errors", errorData, 400);
-  }
-  
   static INVALID_TOKEN_TYPE(res: Response, tokenType:TokenType): void {
-    this.set(res, 4011, `Invalid token type to access. Login Requited ${enumToString(TokenType,tokenType)}`, 401);
+    this.set(res, 4013, `Invalid token type to access. Login Requited ${enumToString(TokenType,tokenType)}`, 401);
+  }
+
+  static VALIDATION_ERROR<T>(res: Response, errorData: T): void {
+    this.setWithData(res, 4014, "Validation errors", errorData, 400);
+  }
+
+  static INVALID_USER_REQUEST(res: Response): void {
+    this.set(res, 4015, `The current user not exist`, 401);
+  }
+
+  static USER_EXCEEDS_THE_BUSINESS_UNIT_VALID(res: Response, validQuantity:number): void {
+    this.set(res, 4016, `BusinessUnit capacity per user is exceeded. Valid for this user: ${validQuantity}`, 400);
+  }
+
+  static PRODUCT_CODE_INVALID_IN_ORDER_DETAIL(res: Response, productCode:string): void {
+    this.set(res, 4017, `The product code ${productCode} is invalid or not found in the order detail`, 400);
+  }
+
+  static FORBIDDEN(res: Response, reason?: string): void {
+    this.set(res, 4030, `Forbidden${reason ? ": " + reason : ""}`, 403);
+  }
+
+  static NOT_MEMBER_OF_BUSINESS(res: Response): void {
+    this.set(res, 4031, "User is not a member of the target business unit", 403);
+  }
+
+  static RATE_LIMIT_EXCEEDED(res: Response, retryAfterSec?: number): void {
+    this.set(
+      res,
+      4290,
+      `Rate limit exceeded. Too many requests${retryAfterSec ? `, retry after ${retryAfterSec} seconds` : ""}`,
+      429
+    );
   }
 
   static UNEXPECTED_ERROR(res: Response): void {

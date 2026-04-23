@@ -35,7 +35,6 @@ export class ComponentDTOOut {
   @Expose() @Type(()=> CurrencyDTOOut) currency: CurrencyDTOOut
   @Expose() @Type(() => BusinessUnitDTOOut) businessUnit: BusinessUnitDTOOut;
 
-
   constructor(
     id: string = "",
     name: string = "",

@@ -1,13 +1,17 @@
+import { requestContext } from "@global/requestContext";
 import { PaginationHelper } from "@models/helpers/paginationHelper.model";
 import { SortHelper } from "@models/helpers/sortHelper.model";
 import { Document, Model, PopulateOptions } from "mongoose";
 
 export interface IBaseRepository<T> {
-  setBusinessUnitFilter(businessUnitID: string): void;
-
   findById(
     id: string,
     populate?: PopulateOptions[] | string[]
+  ): Promise<T | null>;
+
+  findOne(
+    filter: any,
+    populate?: PopulateOptions[] | string[] | null
   ): Promise<T | null>;
 
   findAll(populate?: PopulateOptions[] | string[]): Promise<T[]>;
@@ -44,16 +48,17 @@ export interface IBaseRepository<T> {
 
 export class BaseRepository<T extends Document> implements IBaseRepository<T> {
   private model: Model<T>;
-  private businessFilter: any | undefined = undefined;
+  private scoped: boolean;
 
-  constructor(model: Model<T>) {
+  constructor(model: Model<T>, opts?: { scoped?: boolean }) {
     this.model = model;
+    this.scoped = opts?.scoped ?? false;
   }
 
-  setBusinessUnitFilter(businessUnitID: string): void {
-    this.businessFilter = {
-      businessUnit: businessUnitID,
-    };
+  private getBusinessFilter(): any {
+    if (!this.scoped) return {};
+    const ctx = requestContext.getStore();
+    return ctx?.businessUnitID ? { businessUnit: ctx.businessUnitID } : {};
   }
 
   async findAllPaginated(
@@ -62,9 +67,10 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     populate?: PopulateOptions[] | string[]
   ): Promise<{ data: T[]; total: number; page: number; totalPages: number }> {
     const skip = (page - 1) * limit;
-    const total = await this.model.countDocuments(this.businessFilter);
+    const businessFilter = this.getBusinessFilter();
+    const total = await this.model.countDocuments(businessFilter);
 
-    const query = this.model.find(this.businessFilter).skip(skip).limit(limit);
+    const query = this.model.find(businessFilter).skip(skip).limit(limit);
 
     if (populate != undefined) query.populate(populate);
 
@@ -88,7 +94,7 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     page?: number,
     limit?: number
   ): Promise<PaginationHelper<T>> {
-    const mergeFilter = {...filter, ...this.businessFilter};
+    const mergeFilter = {...filter, ...this.getBusinessFilter()};
     const total = await this.model.countDocuments(mergeFilter);
     let totalPages = 1;
 
@@ -120,7 +126,7 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     id: string,
     populate: PopulateOptions[] | string[] | null = null
   ): Promise<T | null> {
-    const mergeFilter = {_id:id, ...this.businessFilter};
+    const mergeFilter = {_id:id, ...this.getBusinessFilter()};
     const query = this.model.findOne(mergeFilter);
 
     if (populate != null) query.populate(populate);
@@ -128,8 +134,20 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     return query.exec();
   }
 
+  async findOne(
+    filter: any,
+    populate: PopulateOptions[] | string[] | null = null
+  ): Promise<T | null> {
+    const mergedFilter = { ...filter, ...this.getBusinessFilter() };
+    const query = this.model.findOne(mergedFilter);
+
+    if (populate != null) query.populate(populate);
+
+    return query.exec();
+  }
+
   async findAll(populate?: PopulateOptions[] | string[]): Promise<T[]> {
-    const query = this.model.find(this.businessFilter);
+    const query = this.model.find(this.getBusinessFilter());
 
     if (populate != undefined) query.populate(populate);
 

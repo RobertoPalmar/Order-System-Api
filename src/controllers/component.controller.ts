@@ -1,4 +1,5 @@
 import { componentBasicPopulate, componentTotalPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { ComponentDTOOut } from "@models/DTOs/component.DTO";
 import { Pagination } from "@models/response/pagination.model";
 import { repositoryHub } from "@repositories/repositoryHub";
@@ -6,14 +7,10 @@ import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import {Request, Response} from "express"
-import TokenUtils from "@utils/token.utils";
 import { Component } from "@models/database/component.model";
 
 export const getAllComponents = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -26,11 +23,6 @@ export const getAllComponents = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET COMPONENT LIST
     const { data, total, totalPages } =
@@ -64,16 +56,8 @@ export const getAllComponents = async (req: Request, res: Response) => {
 
 export const getComponentByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { componentID } = req.params;
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND Component
     const ComponentByID = await repositoryHub.componentRepository.findById(
@@ -100,9 +84,6 @@ export const getComponentByID = async (req: Request, res: Response) => {
 
 export const getComponentBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -115,11 +96,6 @@ export const getComponentBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -183,7 +159,7 @@ const createFilterByQueryParams = (req: Request) => {
 export const createComponent = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const {
@@ -204,13 +180,8 @@ export const createComponent = async (req: Request, res: Response) => {
       status,
       priceAsExtra,
       currency,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE EXISTING COMPONENT
     const existingComponent = await repositoryHub.componentRepository.findByFilter({name});
@@ -238,14 +209,6 @@ export const createComponent = async (req: Request, res: Response) => {
 
 export const updateComponent = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
     if(existComponent == null){
@@ -273,14 +236,6 @@ export const updateComponent = async (req: Request, res: Response) => {
 
 export const deleteComponent = async (req:Request, res:Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.componentRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
     if(existComponent == null){

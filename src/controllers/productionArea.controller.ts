@@ -1,4 +1,5 @@
 import { productionAreaBasicPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { ProductionArea } from "@models/database/productionArea.model";
 import { ProductionAreaDTOOut } from "@models/DTOs/productionArea.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -6,14 +7,10 @@ import { repositoryHub } from "@repositories/repositoryHub";
 import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import { Request, Response } from "express";
 
 export const getAllProductionAreas = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -26,11 +23,6 @@ export const getAllProductionAreas = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET PRODUCTION AREA LIST
     const { data, total, totalPages } =
@@ -64,16 +56,8 @@ export const getAllProductionAreas = async (req: Request, res: Response) => {
 
 export const getProductionAreaByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { productionAreaID } = req.params;
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND PRODUCTION AREA
     const productionAreaByID = await repositoryHub.productionAreaRepository.findById(
@@ -100,9 +84,6 @@ export const getProductionAreaByID = async (req: Request, res: Response) => {
 
 export const getProductionAreasBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -115,11 +96,6 @@ export const getProductionAreasBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -173,7 +149,7 @@ const createFilterByQueryParams = (req: Request) => {
 export const createProductionArea = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const { name, description, status, preferredCategory, priority } = req.body;
@@ -185,13 +161,8 @@ export const createProductionArea = async (req: Request, res: Response) => {
       status,
       preferredCategory,
       priority,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE EXISTING PRODUCTION AREA
     const existingProductionArea = await repositoryHub.productionAreaRepository.findByFilter({name});
@@ -219,14 +190,6 @@ export const createProductionArea = async (req: Request, res: Response) => {
 
 export const updateProductionArea = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
     if(existProductionArea == null){
@@ -254,14 +217,6 @@ export const updateProductionArea = async (req: Request, res: Response) => {
 
 export const deleteProductionArea = async (req:Request, res:Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.productionAreaRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
     if(existProductionArea == null){

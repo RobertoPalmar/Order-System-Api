@@ -1,4 +1,5 @@
 import { TokenType } from "@global/definitions";
+import { requestContext } from "@global/requestContext";
 import { TokenBussinesData, TokenData } from "@models/helpers/tokenData.model";
 import { ErrorResponse } from "@utils/responseHandler.utils";
 import TokenUtils from "@utils/token.utils";
@@ -15,7 +16,7 @@ export const validateAuth = async (req: Request, res: Response, next: NextFuncti
   }
 
   const {decoded, expired} = TokenUtils.verifyToken(authToken);
-  
+
   if(expired){
     ErrorResponse.EXPIRED_TOKEN(res);
     return;
@@ -27,10 +28,11 @@ export const validateAuth = async (req: Request, res: Response, next: NextFuncti
   }
 
   const tokenData = plainToInstance(TokenData,decoded,{excludeExtraneousValues: true});
-  req.headers["userID"] = tokenData.userID;
-  req.headers["role"] = tokenData.role?.toString();
 
-  next();
+  requestContext.run(
+    { userID: tokenData.userID },
+    () => next()
+  );
 }
 
 export const validateBusinessAuth = async (req: Request, res: Response, next: NextFunction) => {
@@ -43,7 +45,7 @@ export const validateBusinessAuth = async (req: Request, res: Response, next: Ne
   }
 
   const {decoded, expired} = TokenUtils.verifyToken(authToken);
-  
+
   if(expired){
     ErrorResponse.EXPIRED_TOKEN(res);
     return;
@@ -61,9 +63,12 @@ export const validateBusinessAuth = async (req: Request, res: Response, next: Ne
     return;
   }
 
-  req.headers["userID"] = tokenBussinesData.userID;
-  req.headers["role"] = tokenBussinesData.role.toString();
-  req.headers["businessUnitID"] = tokenBussinesData.businessUnitID;
-
-  next();
+  requestContext.run(
+    {
+      userID: tokenBussinesData.userID,
+      role: tokenBussinesData.role,
+      businessUnitID: tokenBussinesData.businessUnitID,
+    },
+    () => next()
+  );
 }

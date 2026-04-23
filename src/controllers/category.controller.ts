@@ -1,4 +1,5 @@
 import { categoryBasicPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { Category } from "@models/database/category.model";
 import { CategoryDTOOut } from "@models/DTOs/category.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -6,14 +7,10 @@ import { repositoryHub } from "@repositories/repositoryHub";
 import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import { Request, Response } from "express";
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -26,11 +23,6 @@ export const getAllCategories = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET CATEGORY FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET CATEGORY LIST
     const { data, total, totalPages } =
@@ -64,16 +56,8 @@ export const getAllCategories = async (req: Request, res: Response) => {
 
 export const getCategoryByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { categoryID } = req.params;
-
-    //SET CATEGORY FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND CATEGORY
     const categoryByID = await repositoryHub.categoryRepository.findById(
@@ -100,9 +84,6 @@ export const getCategoryByID = async (req: Request, res: Response) => {
 
 export const getCategoryBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -115,11 +96,6 @@ export const getCategoryBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET CATEGORY FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -171,7 +147,7 @@ const createFilterByQueryParams = (req: Request) => {
 export const createCategory = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const { name, description } = req.body;
@@ -180,13 +156,8 @@ export const createCategory = async (req: Request, res: Response) => {
     const category = new Category({
       name,
       description,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET CATEGORY FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE EXISTING CATEGORY
     const existingCategory =
@@ -219,14 +190,6 @@ export const createCategory = async (req: Request, res: Response) => {
 
 export const updateCategory = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
     if(existCategory == null){
@@ -254,14 +217,6 @@ export const updateCategory = async (req: Request, res: Response) => {
 
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.categoryRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
     if(existCategory == null){

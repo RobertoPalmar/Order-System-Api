@@ -1,4 +1,5 @@
 import { currencyBasicPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
 import { Currency } from "@models/database/currency.model";
 import { CurrencyDTOOut } from "@models/DTOs/currency.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -6,15 +7,11 @@ import { repositoryHub } from "@repositories/repositoryHub";
 import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import {Request, Response} from "express"
 
 
 export const getAllCurrencies = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -27,11 +24,6 @@ export const getAllCurrencies = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET CURRENCY LIST
     const { data, total, totalPages } =
@@ -65,16 +57,8 @@ export const getAllCurrencies = async (req: Request, res: Response) => {
 
 export const getCurrencyByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PARAMS
     const { CurrencyID } = req.params;
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //FIND Currency
     const CurrencyByID = await repositoryHub.currencyRepository.findById(
@@ -101,9 +85,6 @@ export const getCurrencyByID = async (req: Request, res: Response) => {
 
 export const getCurrencyBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -116,11 +97,6 @@ export const getCurrencyBy = async (req: Request, res: Response) => {
       );
       return;
     }
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //GET FILTER BY PARAMS
     let filter = createFilterByQueryParams(req);
@@ -180,7 +156,7 @@ const createFilterByQueryParams = (req: Request) => {
 export const createCurrency = async (req: Request, res: Response) => {
   try {
     //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
+    const ctx = getCurrentContext();
 
     //GET PARAMS
     const {
@@ -197,13 +173,8 @@ export const createCurrency = async (req: Request, res: Response) => {
       symbol,
       exchangeRate,
       main,
-      businessUnit: tokenData.businessUnitID,
+      businessUnit: ctx.businessUnitID!,
     });
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
 
     //VALIDATE EXISTING CURRENCY
     const existingCurrency = await repositoryHub.currencyRepository.findByFilter({name});
@@ -231,14 +202,6 @@ export const createCurrency = async (req: Request, res: Response) => {
 
 export const updateCurrency = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
     if(existCurrency == null){
@@ -266,14 +229,6 @@ export const updateCurrency = async (req: Request, res: Response) => {
 
 export const deleteCurrency = async (req:Request, res:Response) => {
   try {
-    //GET TOKEN DATA
-    const tokenData = TokenUtils.getTokenBussinesDataFromHeaders(req);
-
-    //SET BUSINESSUNIT FILTER
-    repositoryHub.currencyRepository.setBusinessUnitFilter(
-      tokenData.businessUnitID
-    );
-
     //VALIDATE IF EXIST
     const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
     if(existCurrency == null){

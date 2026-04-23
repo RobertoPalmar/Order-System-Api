@@ -6,7 +6,6 @@ import { repositoryHub } from "@repositories/repositoryHub";
 import { getPaginationParams } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
-import TokenUtils from "@utils/token.utils";
 import EncryptUtils from "@utils/encrypt.utils";
 import { Request, Response } from "express";
 
@@ -134,13 +133,12 @@ export const getUsersBy = async (req: Request, res: Response) => {
 };
 
 const createFilterByQueryParams = (req: Request) => {
-  const { name, email, role, status } = req.query;
+  const { name, email, status } = req.query;
   let filter: any = {};
 
   //FILTER PROPERTY
   if (name) filter.name = { $regex: name as string, $options: "i" };
   if (email) filter.email = { $regex: email as string, $options: "i" };
-  if (role) filter.role = role;
   if (status) filter.status = status;
 
   return filter;
@@ -149,14 +147,13 @@ const createFilterByQueryParams = (req: Request) => {
 export const createUser = async (req: Request, res: Response) => {
   try {
     //GET PARAMS
-    const { name, email, password, role, status } = req.body;
+    const { name, email, password, status } = req.body;
 
     //FORMAT USER
     const user = new User({
       name,
       email,
       password: await EncryptUtils.encryptString(password),
-      role,
       status,
     });
 

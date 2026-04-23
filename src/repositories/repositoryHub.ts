@@ -8,6 +8,7 @@ import { Customer, ICustomer } from "@models/database/customer.model";
 import { IOrder, Order } from "@models/database/order.model";
 import { IProductionArea, ProductionArea } from "@models/database/productionArea.model";
 import { IUser, User } from "@models/database/user.model";
+import { IMembership, Membership } from "@models/database/membership.model";
 
 class RepositoryHub {
   businessUnitRepository: BaseRepository<IBusinessUnit>
@@ -19,17 +20,19 @@ class RepositoryHub {
   productRepository: BaseRepository<IProduct>
   productionAreaRepository: BaseRepository<IProductionArea>
   userRepository: BaseRepository<IUser>
+  membershipRepository: BaseRepository<IMembership>
 
   constructor(){
-    this.businessUnitRepository = new BaseRepository<IBusinessUnit>(BusinessUnit);
-    this.categoryRepository = new BaseRepository<ICategory>(Category);
-    this.componentRepository = new BaseRepository<IComponent>(Component);
-    this.currencyRepository = new BaseRepository<ICurrency>(Currency);
-    this.customerRepository = new BaseRepository<ICustomer>(Customer);
-    this.orderRepository = new BaseRepository<IOrder>(Order);
-    this.productRepository = new BaseRepository<IProduct>(Product);
-    this.productionAreaRepository = new BaseRepository<IProductionArea>(ProductionArea);
-    this.userRepository = new BaseRepository<IUser>(User);
+    this.businessUnitRepository = new BaseRepository<IBusinessUnit>(BusinessUnit, { scoped: false });
+    this.categoryRepository = new BaseRepository<ICategory>(Category, { scoped: true });
+    this.componentRepository = new BaseRepository<IComponent>(Component, { scoped: true });
+    this.currencyRepository = new BaseRepository<ICurrency>(Currency, { scoped: true });
+    this.customerRepository = new BaseRepository<ICustomer>(Customer, { scoped: true });
+    this.orderRepository = new BaseRepository<IOrder>(Order, { scoped: true });
+    this.productRepository = new BaseRepository<IProduct>(Product, { scoped: true });
+    this.productionAreaRepository = new BaseRepository<IProductionArea>(ProductionArea, { scoped: true });
+    this.userRepository = new BaseRepository<IUser>(User, { scoped: false });
+    this.membershipRepository = new BaseRepository<IMembership>(Membership, { scoped: true });
   }
 }
 
