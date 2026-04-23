@@ -1,0 +1,47 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: comandas-mongo
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: >
+        mongosh --quiet --eval
+        "try { rs.status().ok } catch(e) {
+          rs.initiate({_id:'rs0', members:[{_id:0, host:'mongo:27017'}]}).ok
+        }"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comandas-api
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/comandas?replicaSet=rs0
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+
+volumes:
+  mongo_data:
+    name: comandas_mongo_data

@@ -38,7 +38,6 @@ const MinimalUserSchema = new Schema({
   _id: { type: String, required: true },
   name: { type: String, required: true },
   email: { type: String, required: true },
-  role: { type: Number, required: true },
 });
 
 const MinimalCurrencySchema = new Schema({
