@@ -125,6 +125,39 @@ export {};
 
 /**
  * @swagger
+ * /Auth/myMemberships:
+ *   get:
+ *     tags: [Auth]
+ *     summary: List user's active memberships
+ *     description: >
+ *       Requires a USER_TOKEN (issued by POST /Auth/signIn). Returns the list
+ *       of business units the caller is an active member of, along with their
+ *       role in each. Use this to populate a BU selector before calling
+ *       GET /Auth/signInBussinesUnit/:businessUnitID.
+ *     responses:
+ *       200:
+ *         description: Active memberships for the current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           businessUnitID: { type: string }
+ *                           name: { type: string }
+ *                           role: { type: integer }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
  * /Auth/refresh:
  *   post:
  *     tags: [Auth]

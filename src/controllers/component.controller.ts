@@ -1,4 +1,4 @@
-import { componentBasicPopulate, componentTotalPopulate } from "@global/definitions";
+import { componentBasicPopulate, componentTotalPopulate, OrderStatus } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
 import { ComponentDTOOut } from "@models/DTOs/component.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -8,9 +8,17 @@ import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import {Request, Response} from "express"
 import { Component } from "@models/database/component.model";
+import { Order } from "@models/database/order.model";
+import { Product } from "@models/database/product.model";
+
+// ACTIVE ORDER STATUSES — DELETES REFERENCING ORDERS IN THESE STATES ARE BLOCKED
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CREATED, OrderStatus.IN_PROGRESS];
 
 export const getAllComponents = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -56,6 +64,9 @@ export const getAllComponents = async (req: Request, res: Response) => {
 
 export const getComponentByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { componentID } = req.params;
 
@@ -84,6 +95,9 @@ export const getComponentByID = async (req: Request, res: Response) => {
 
 export const getComponentBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -209,6 +223,9 @@ export const createComponent = async (req: Request, res: Response) => {
 
 export const updateComponent = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
     if(existComponent == null){
@@ -236,10 +253,37 @@ export const updateComponent = async (req: Request, res: Response) => {
 
 export const deleteComponent = async (req:Request, res:Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existComponent = await repositoryHub.componentRepository.findById(req.params.componentID);
     if(existComponent == null){
       ErrorResponse.NOT_FOUND(res, "Component");
+      return;
+    }
+
+    //PRODUCT REFS GUARD
+    const productRefs = await Product.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      components: req.params.componentID,
+    });
+    if (productRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Component referenced by products");
+      return;
+    }
+
+    //ACTIVE ORDER REFS GUARD
+    const orderRefs = await Order.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      $or: [
+        { "details.extras._id": req.params.componentID },
+        { "details.removed._id": req.params.componentID },
+      ],
+      status: { $in: ACTIVE_ORDER_STATUSES },
+    });
+    if (orderRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Component referenced by active orders");
       return;
     }
 

@@ -18,6 +18,9 @@ import { Types } from "mongoose";
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -65,6 +68,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
 export const getOrdersBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -117,6 +123,9 @@ export const getOrdersBy = async (req: Request, res: Response) => {
 
 export const getOrderByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { orderID } = req.params;
 
@@ -308,6 +317,9 @@ const MapOrderDTOInToOrderEntity = async (
 
 export const updateOrder = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existOrder = await repositoryHub.orderRepository.findById(
       req.params.orderID
@@ -337,6 +349,9 @@ export const updateOrder = async (req: Request, res: Response) => {
 
 export const deleteOrder = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existOrder = await repositoryHub.orderRepository.findById(
       req.params.orderID

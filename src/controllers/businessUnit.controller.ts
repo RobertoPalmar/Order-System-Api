@@ -4,6 +4,7 @@ import {
   IBusinessUnit,
 } from "@models/database/businessUnit.model";
 import { Membership } from "@models/database/membership.model";
+import { Order } from "@models/database/order.model";
 import { Pagination } from "@models/response/pagination.model";
 import { getPaginationParams } from "@utils/functions.utils";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
@@ -11,8 +12,18 @@ import { Request, Response } from "express";
 import { repositoryHub } from "@repositories/repositoryHub";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { BusinessUnitDTOOut } from "@models/DTOs/businessUnit.DTO";
-import { businessUnitBasicPopulate, UserRole } from "@global/definitions";
+import {
+  businessUnitBasicPopulate,
+  OrderStatus,
+  UserRole,
+} from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
+
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.CREATED,
+  OrderStatus.IN_PROGRESS,
+];
 
 export const getAllBusinessUnit = async (req: Request, res: Response) => {
   try {
@@ -32,12 +43,36 @@ export const getAllBusinessUnit = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET BUSINESS UNIT LIST
+    //GET ACTIVE MEMBERSHIPS FOR CURRENT USER
+    const memberships = await Membership.find({
+      user: ctx.userID,
+      status: true,
+    }).select("businessUnit");
+    const memberBUIDs = memberships.map((m) => m.businessUnit);
+
+    //SHORT-CIRCUIT IF NO MEMBERSHIPS
+    if (memberBUIDs.length === 0) {
+      const emptyPagination: Pagination<BusinessUnitDTOOut[]> = {
+        data: [],
+        pagination: {
+          limit,
+          page,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+      SuccessResponse.GET(res, emptyPagination);
+      return;
+    }
+
+    //GET BUSINESS UNIT LIST SCOPED TO MEMBERSHIPS
     const { data, total, totalPages } =
-      await repositoryHub.businessUnitRepository.findAllPaginated(
+      await repositoryHub.businessUnitRepository.findByFilter(
+        { _id: { $in: memberBUIDs } },
+        businessUnitBasicPopulate,
+        undefined,
         page,
-        limit,
-        businessUnitBasicPopulate
+        limit
       );
 
     //MAP THE LIST DATA
@@ -57,13 +92,16 @@ export const getAllBusinessUnit = async (req: Request, res: Response) => {
     //FORMAT RESPONSE
     SuccessResponse.GET(res, pagination);
   } catch (ex: any) {
-    console.log("❌ Error in getAllProducts:", ex);
+    console.log("❌ Error in getAllBusinessUnit:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
 };
 
 export const getBusinessUnitByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { businessUnitID } = req.params;
 
@@ -76,6 +114,17 @@ export const getBusinessUnitByID = async (req: Request, res: Response) => {
 
     //VALIDATE IS BUSINESS UNIT EXIST
     if (BusinessUnitByID == null) {
+      ErrorResponse.NOT_FOUND(res, "BusinessUnit");
+      return;
+    }
+
+    //VALIDATE MEMBERSHIP
+    const membership = await Membership.findOne({
+      user: ctx.userID,
+      businessUnit: businessUnitID,
+      status: true,
+    });
+    if (membership == null) {
       ErrorResponse.NOT_FOUND(res, "BusinessUnit");
       return;
     }
@@ -110,10 +159,35 @@ export const getBusinessUnitBy = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET FILTER BY PARAMS
-    let filter = createFilterByQueryParams(req);
+    //GET ACTIVE MEMBERSHIPS FOR CURRENT USER
+    const memberships = await Membership.find({
+      user: ctx.userID,
+      status: true,
+    }).select("businessUnit");
+    const memberBUIDs = memberships.map((m) => m.businessUnit);
 
-    //GET PRODUCT LIST
+    //SHORT-CIRCUIT IF NO MEMBERSHIPS
+    if (memberBUIDs.length === 0) {
+      const emptyPagination: Pagination<BusinessUnitDTOOut[]> = {
+        data: [],
+        pagination: {
+          limit,
+          page,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+      SuccessResponse.GET(res, emptyPagination);
+      return;
+    }
+
+    //GET FILTER BY PARAMS
+    let filter = {
+      ...createFilterByQueryParams(req),
+      _id: { $in: memberBUIDs },
+    };
+
+    //GET BUSINESS UNIT LIST
     const { data, total, totalPages } =
       await repositoryHub.businessUnitRepository.findByFilter(
         filter,
@@ -284,9 +358,33 @@ export const deleteBusinessUnit = async (req: Request, res: Response) => {
       return;
     }
 
+    //GET PARAMS
+    const { businessUnitID } = req.params;
+
+    //CHECK OTHER ACTIVE MEMBERS
+    const otherActiveMembers = await Membership.countDocuments({
+      businessUnit: businessUnitID,
+      status: true,
+      user: { $ne: ctx.userID },
+    });
+    if (otherActiveMembers > 0) {
+      ErrorResponse.FORBIDDEN(res, "Business unit has active members");
+      return;
+    }
+
+    //CHECK ACTIVE ORDERS
+    const activeOrders = await Order.countDocuments({
+      businessUnit: businessUnitID,
+      status: { $in: ACTIVE_ORDER_STATUSES },
+    });
+    if (activeOrders > 0) {
+      ErrorResponse.FORBIDDEN(res, "Business unit has active orders");
+      return;
+    }
+
     //GET AND DELETE THE ENTITY
     const deleteEntity = await repositoryHub.businessUnitRepository.deleteById(
-      req.params.businessUnitID
+      businessUnitID
     );
 
     //VALIDATE IF EXIST
@@ -294,6 +392,9 @@ export const deleteBusinessUnit = async (req: Request, res: Response) => {
       ErrorResponse.NOT_FOUND(res, "BusinessUnit");
       return;
     }
+
+    //CLEANUP MEMBERSHIPS
+    await Membership.deleteMany({ businessUnit: businessUnitID });
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);

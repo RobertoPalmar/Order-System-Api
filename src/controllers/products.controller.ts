@@ -1,8 +1,10 @@
 import {
+  OrderStatus,
   productBasicPopulate,
   productTotalPopulate,
 } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
+import { Order } from "@models/database/order.model";
 import { Product } from "@models/database/product.model";
 import { ProductDTOOut } from "@models/DTOs/product.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -12,8 +14,14 @@ import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import { Request, Response } from "express";
 import { repositoryHub } from "src/repositories/repositoryHub";
 
+// ACTIVE ORDER STATUSES — DELETES REFERENCING ORDERS IN THESE STATES ARE BLOCKED
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CREATED, OrderStatus.IN_PROGRESS];
+
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -59,6 +67,9 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 export const getProductBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -140,6 +151,9 @@ const createFilterByQueryParams = (req: Request): any => {
 
 export const getProductByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { productID } = req.params;
 
@@ -219,6 +233,9 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     if(isNullOrEmpty(req.params.productID)){
       ErrorResponse.INVALID_FIELD(res,"productID","The value cannot be null or empty")
       return;
@@ -251,10 +268,24 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existProduct = await repositoryHub.productRepository.findById(req.params.productID);
     if(existProduct == null){
       ErrorResponse.NOT_FOUND(res, "Product");
+      return;
+    }
+
+    //ACTIVE ORDER REFS GUARD
+    const orderRefs = await Order.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      "details.product._id": req.params.productID,
+      status: { $in: ACTIVE_ORDER_STATUSES },
+    });
+    if (orderRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Product referenced by active orders");
       return;
     }
 

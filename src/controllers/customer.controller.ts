@@ -1,6 +1,7 @@
-import { customerBasicPopulate } from "@global/definitions";
+import { customerBasicPopulate, OrderStatus } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
 import { Customer } from "@models/database/customer.model";
+import { Order } from "@models/database/order.model";
 import { CustomerDTOOut } from "@models/DTOs/customer.DTO";
 import { Pagination } from "@models/response/pagination.model";
 import { repositoryHub } from "@repositories/repositoryHub";
@@ -9,8 +10,14 @@ import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import { Request, Response } from "express";
 
+// ACTIVE ORDER STATUSES — DELETES REFERENCING ORDERS IN THESE STATES ARE BLOCKED
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CREATED, OrderStatus.IN_PROGRESS];
+
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -56,6 +63,9 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 
 export const getCustomerByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { customerID } = req.params;
 
@@ -84,6 +94,9 @@ export const getCustomerByID = async (req: Request, res: Response) => {
 
 export const getCustomerBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -190,6 +203,9 @@ export const createCustomer = async (req: Request, res: Response) => {
 
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
     if(existCustomer == null){
@@ -217,10 +233,24 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
 export const deleteCustomer = async (req:Request, res:Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCustomer = await repositoryHub.customerRepository.findById(req.params.customerID);
     if(existCustomer == null){
       ErrorResponse.NOT_FOUND(res, "Customer");
+      return;
+    }
+
+    //ACTIVE ORDER REFS GUARD
+    const orderRefs = await Order.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      "customer._id": req.params.customerID,
+      status: { $in: ACTIVE_ORDER_STATUSES },
+    });
+    if (orderRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Customer referenced by active orders");
       return;
     }
 

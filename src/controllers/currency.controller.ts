@@ -1,6 +1,9 @@
-import { currencyBasicPopulate } from "@global/definitions";
+import { currencyBasicPopulate, OrderStatus } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
+import { Component } from "@models/database/component.model";
 import { Currency } from "@models/database/currency.model";
+import { Order } from "@models/database/order.model";
+import { Product } from "@models/database/product.model";
 import { CurrencyDTOOut } from "@models/DTOs/currency.DTO";
 import { Pagination } from "@models/response/pagination.model";
 import { repositoryHub } from "@repositories/repositoryHub";
@@ -9,9 +12,15 @@ import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import {Request, Response} from "express"
 
+// ACTIVE ORDER STATUSES — DELETES REFERENCING ORDERS IN THESE STATES ARE BLOCKED
+const ACTIVE_ORDER_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CREATED, OrderStatus.IN_PROGRESS];
+
 
 export const getAllCurrencies = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -57,6 +66,9 @@ export const getAllCurrencies = async (req: Request, res: Response) => {
 
 export const getCurrencyByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { CurrencyID } = req.params;
 
@@ -85,6 +97,9 @@ export const getCurrencyByID = async (req: Request, res: Response) => {
 
 export const getCurrencyBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -202,6 +217,9 @@ export const createCurrency = async (req: Request, res: Response) => {
 
 export const updateCurrency = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
     if(existCurrency == null){
@@ -229,10 +247,50 @@ export const updateCurrency = async (req: Request, res: Response) => {
 
 export const deleteCurrency = async (req:Request, res:Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCurrency = await repositoryHub.currencyRepository.findById(req.params.currencyID);
     if(existCurrency == null){
       ErrorResponse.NOT_FOUND(res, "Currency");
+      return;
+    }
+
+    //MAIN CURRENCY GUARD
+    if (existCurrency.main === true) {
+      ErrorResponse.FORBIDDEN(res, "Cannot delete main currency");
+      return;
+    }
+
+    //ACTIVE ORDER REFS GUARD
+    const orderRefs = await Order.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      "currency._id": req.params.currencyID,
+      status: { $in: ACTIVE_ORDER_STATUSES },
+    });
+    if (orderRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Currency referenced by active orders");
+      return;
+    }
+
+    //PRODUCT REFS GUARD
+    const productRefs = await Product.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      currency: req.params.currencyID,
+    });
+    if (productRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Currency referenced by products");
+      return;
+    }
+
+    //COMPONENT REFS GUARD
+    const componentRefs = await Component.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      currency: req.params.currencyID,
+    });
+    if (componentRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Currency referenced by components");
       return;
     }
 

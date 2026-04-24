@@ -8,11 +8,11 @@ import { UserRole } from "@global/definitions";
 
 const router = Router();
 
-router.get('/getAllUsers', validateAuth, UserController.getAllUsers);
-router.get('/getUserByID/:userID', validateAuth, UserController.getUserByID);
-router.get('/getUsersBy', validateAuth, UserController.getUsersBy);
-// router.post('/createUser', validateAuth, validateBody(UserDTOIn), UserController.createUser);
-// router.put('/updateUser/:userID', validateAuth, validateBody(PartialUserDTOIn), UserController.updateUser);
+router.get('/getAllUsers', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION), UserController.getAllUsers);
+router.get('/getUserByID/:userID', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION), UserController.getUserByID);
+router.get('/getUsersBy', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION), UserController.getUsersBy);
+router.post('/createUser', validateAuth, validateBody(UserDTOIn), UserController.createUser);
+router.put('/updateUser/:userID', validateBusinessAuth, requireRole(UserRole.ADMIN), validateBody(PartialUserDTOIn), UserController.updateUser);
 router.delete('/deleteUser/:userID', validateBusinessAuth, requireRole(UserRole.ADMIN), UserController.deleteUser);
 
 export default router;

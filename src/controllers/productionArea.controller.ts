@@ -1,5 +1,6 @@
 import { productionAreaBasicPopulate } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
+import { Product } from "@models/database/product.model";
 import { ProductionArea } from "@models/database/productionArea.model";
 import { ProductionAreaDTOOut } from "@models/DTOs/productionArea.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -11,6 +12,9 @@ import { Request, Response } from "express";
 
 export const getAllProductionAreas = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -56,6 +60,9 @@ export const getAllProductionAreas = async (req: Request, res: Response) => {
 
 export const getProductionAreaByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { productionAreaID } = req.params;
 
@@ -84,6 +91,9 @@ export const getProductionAreaByID = async (req: Request, res: Response) => {
 
 export const getProductionAreasBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -190,6 +200,9 @@ export const createProductionArea = async (req: Request, res: Response) => {
 
 export const updateProductionArea = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
     if(existProductionArea == null){
@@ -217,10 +230,23 @@ export const updateProductionArea = async (req: Request, res: Response) => {
 
 export const deleteProductionArea = async (req:Request, res:Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existProductionArea = await repositoryHub.productionAreaRepository.findById(req.params.productionAreaID);
     if(existProductionArea == null){
       ErrorResponse.NOT_FOUND(res, "Production Area");
+      return;
+    }
+
+    //PRODUCT REFS GUARD
+    const productRefs = await Product.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      productArea: req.params.productionAreaID,
+    });
+    if (productRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "ProductionArea referenced by products");
       return;
     }
 

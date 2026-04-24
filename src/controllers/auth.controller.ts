@@ -1,6 +1,7 @@
 import { getCurrentContext } from "@global/requestContext";
 import { User } from "@models/database/user.model";
 import { RefreshToken } from "@models/database/refreshToken.model";
+import { Membership } from "@models/database/membership.model";
 import { Request, Response } from "express";
 import EncryptUtils from "@utils/encrypt.utils";
 import TokenUtils from "@utils/token.utils";
@@ -202,6 +203,34 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (ex: any) {
     console.log("❌ Error in refresh:", ex);
+    ErrorResponse.UNEXPECTED_ERROR(res);
+  }
+};
+
+export const getMyMemberships = async (req: Request, res: Response) => {
+  try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
+    //FIND USER'S ACTIVE MEMBERSHIPS
+    const memberships = await Membership.find({ user: ctx.userID, status: true })
+      .populate({ path: "businessUnit", select: "_id name description" })
+      .exec();
+
+    //SHAPE RESPONSE (compact, for BU selector)
+    const response = memberships.map((m) => {
+      const bu: any = m.businessUnit;
+      return {
+        businessUnitID: bu?._id?.toString?.() ?? String(bu?._id),
+        name: bu?.name,
+        role: m.role,
+      };
+    });
+
+    //RETURN
+    SuccessResponse.GET(res, response);
+  } catch (ex: any) {
+    console.log("❌ Error in getMyMemberships:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
 };

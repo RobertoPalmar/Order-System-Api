@@ -1,6 +1,7 @@
 import { categoryBasicPopulate } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
 import { Category } from "@models/database/category.model";
+import { Product } from "@models/database/product.model";
 import { CategoryDTOOut } from "@models/DTOs/category.DTO";
 import { Pagination } from "@models/response/pagination.model";
 import { repositoryHub } from "@repositories/repositoryHub";
@@ -11,6 +12,9 @@ import { Request, Response } from "express";
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -56,6 +60,9 @@ export const getAllCategories = async (req: Request, res: Response) => {
 
 export const getCategoryByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { categoryID } = req.params;
 
@@ -84,6 +91,9 @@ export const getCategoryByID = async (req: Request, res: Response) => {
 
 export const getCategoryBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -190,6 +200,9 @@ export const createCategory = async (req: Request, res: Response) => {
 
 export const updateCategory = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
     if(existCategory == null){
@@ -217,10 +230,23 @@ export const updateCategory = async (req: Request, res: Response) => {
 
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //VALIDATE IF EXIST
     const existCategory = await repositoryHub.categoryRepository.findById(req.params.categoryID);
     if(existCategory == null){
       ErrorResponse.NOT_FOUND(res, "category");
+      return;
+    }
+
+    //PRODUCT REFS GUARD
+    const productRefs = await Product.countDocuments({
+      businessUnit: ctx.businessUnitID,
+      category: req.params.categoryID,
+    });
+    if (productRefs > 0) {
+      ErrorResponse.FORBIDDEN(res, "Category referenced by products");
       return;
     }
 

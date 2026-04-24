@@ -192,8 +192,9 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     data: Partial<T>,
     populate: PopulateOptions[] | string[] | null = null
   ): Promise<T | null> {
+    const mergeFilter = { _id: id, ...this.getBusinessFilter() };
     const updateModel = await this.model
-      .findByIdAndUpdate(id, data, { new: true })
+      .findOneAndUpdate(mergeFilter, data, { new: true })
       .exec();
 
     if (updateModel == null) return updateModel;
@@ -204,7 +205,8 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
   }
 
   async deleteById(id: string): Promise<boolean> {
-    const deleteResult = await this.model.findByIdAndDelete(id).exec();
+    const mergeFilter = { _id: id, ...this.getBusinessFilter() };
+    const deleteResult = await this.model.findOneAndDelete(mergeFilter).exec();
     return deleteResult !== null;
   }
 }

@@ -9,6 +9,7 @@ const router = Router();
 router.post('/signIn', authController.signIn);
 router.post('/signUp', authController.signUp);
 router.get('/signInBussinesUnit/:businessUnitID', validateAuth, authController.signInBussinesUnit)
+router.get('/myMemberships', validateAuth, authController.getMyMemberships);
 router.post('/refresh', validateBody(RefreshTokenRequestDTOIn), authController.refresh);
 router.post('/logout', validateBody(LogoutRequestDTOIn), authController.logout);
 

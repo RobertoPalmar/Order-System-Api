@@ -1,4 +1,6 @@
-import { userBasicPopulate } from "@global/definitions";
+import { UserRole, userBasicPopulate } from "@global/definitions";
+import { getCurrentContext } from "@global/requestContext";
+import { Membership } from "@models/database/membership.model";
 import { User } from "@models/database/user.model";
 import { UserDTOOut } from "@models/DTOs/user.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -11,6 +13,9 @@ import { Request, Response } from "express";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -24,12 +29,36 @@ export const getAllUsers = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET USER LIST
+    //GET USER IDS FROM ACTIVE MEMBERSHIPS IN CURRENT BU
+    const memberships = await Membership.find({
+      businessUnit: ctx.businessUnitID,
+      status: true,
+    }).select("user");
+    const memberUserIDs = memberships.map((m) => m.user);
+
+    //SHORT-CIRCUIT IF NO MEMBERS
+    if (memberUserIDs.length === 0) {
+      const emptyPagination: Pagination<UserDTOOut[]> = {
+        data: [],
+        pagination: {
+          limit,
+          page,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+      SuccessResponse.GET(res, emptyPagination);
+      return;
+    }
+
+    //GET USER LIST SCOPED TO CURRENT BU MEMBERS
     const { data, total, totalPages } =
-      await repositoryHub.userRepository.findAllPaginated(
+      await repositoryHub.userRepository.findByFilter(
+        { _id: { $in: memberUserIDs } },
+        userBasicPopulate,
+        undefined,
         page,
-        limit,
-        userBasicPopulate
+        limit
       );
 
     //MAP THE LIST DATA
@@ -56,6 +85,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const getUserByID = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PARAMS
     const { userID } = req.params;
 
@@ -67,6 +99,17 @@ export const getUserByID = async (req: Request, res: Response) => {
 
     //VALIDATE IS USER EXIST
     if (userByID == null) {
+      ErrorResponse.NOT_FOUND(res, "User");
+      return;
+    }
+
+    //VALIDATE MEMBERSHIP IN CURRENT BU
+    const membership = await Membership.findOne({
+      user: userID,
+      businessUnit: ctx.businessUnitID,
+      status: true,
+    });
+    if (membership == null) {
       ErrorResponse.NOT_FOUND(res, "User");
       return;
     }
@@ -84,6 +127,9 @@ export const getUserByID = async (req: Request, res: Response) => {
 
 export const getUsersBy = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -97,8 +143,31 @@ export const getUsersBy = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET FILTER BY PARAMS
+    //GET USER IDS FROM ACTIVE MEMBERSHIPS IN CURRENT BU
+    const memberships = await Membership.find({
+      businessUnit: ctx.businessUnitID,
+      status: true,
+    }).select("user");
+    const memberUserIDs = memberships.map((m) => m.user);
+
+    //SHORT-CIRCUIT IF NO MEMBERS
+    if (memberUserIDs.length === 0) {
+      const emptyPagination: Pagination<UserDTOOut[]> = {
+        data: [],
+        pagination: {
+          limit,
+          page,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+      SuccessResponse.GET(res, emptyPagination);
+      return;
+    }
+
+    //GET FILTER BY PARAMS MERGED WITH BU SCOPE
     let filter = createFilterByQueryParams(req);
+    filter._id = { $in: memberUserIDs };
 
     //GET USER LIST
     const { data, total, totalPages } =
@@ -189,6 +258,23 @@ export const createUser = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
+    //GET PARAMS
+    const { userID } = req.params;
+
+    //VALIDATE MEMBERSHIP IN CURRENT BU
+    const membership = await Membership.findOne({
+      user: userID,
+      businessUnit: ctx.businessUnitID,
+      status: true,
+    });
+    if (membership == null) {
+      ErrorResponse.NOT_FOUND(res, "User");
+      return;
+    }
+
     // Handle password encryption if it's being updated
     if (req.body.password) {
       req.body.password = await EncryptUtils.encryptString(req.body.password);
@@ -196,7 +282,7 @@ export const updateUser = async (req: Request, res: Response) => {
 
     //UPDATE USER
     const updatedUser = await repositoryHub.userRepository.updateById(
-      req.params.userID,
+      userID,
       req.body,
       userBasicPopulate
     );
@@ -217,18 +303,49 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteUser = async (req:Request, res:Response) => {
+export const deleteUser = async (req: Request, res: Response) => {
   try {
-    //GET AND DELETE THE ENTITY
-    const deleteEntity = await repositoryHub.userRepository.deleteById(
-      req.params.userID
-    );
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
 
-    //VALIDATE IF EXIST
-    if (deleteEntity == false) {
+    //GET PARAMS
+    const { userID: targetUserID } = req.params;
+
+    //FIND TARGET MEMBERSHIP IN CURRENT BU
+    const targetMembership = await Membership.findOne({
+      user: targetUserID,
+      businessUnit: ctx.businessUnitID,
+    });
+    if (targetMembership == null) {
       ErrorResponse.NOT_FOUND(res, "User");
       return;
     }
+
+    //LAST-ADMIN GUARD
+    const isActiveAdmin =
+      targetMembership.role === UserRole.ADMIN && targetMembership.status === true;
+
+    if (isActiveAdmin) {
+      const remainingAdmins = await Membership.countDocuments({
+        businessUnit: ctx.businessUnitID,
+        role: UserRole.ADMIN,
+        status: true,
+        _id: { $ne: targetMembership._id },
+      });
+
+      if (remainingAdmins === 0) {
+        ErrorResponse.FORBIDDEN(
+          res,
+          "Cannot remove the last active admin of the business unit"
+        );
+        return;
+      }
+    }
+
+    //DELETE MEMBERSHIP
+    await repositoryHub.membershipRepository.deleteById(
+      targetMembership._id as string
+    );
 
     //RETURN THE RESPONSE
     SuccessResponse.DELETE(res);
@@ -236,4 +353,4 @@ export const deleteUser = async (req:Request, res:Response) => {
     console.log("❌ Error in deleteUser:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
-}
+};
