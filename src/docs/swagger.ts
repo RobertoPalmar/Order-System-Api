@@ -26,7 +26,7 @@ const definition = {
     },
   },
   servers: [
-    { url: "/", description: "current server" },
+    { url: "/v1", description: "current server" },
   ],
   tags: [
     { name: "Auth", description: "Sign up, sign in and business-scoped login" },
@@ -601,6 +601,60 @@ const definition = {
             type: "array",
             items: { $ref: "#/components/schemas/OrderDetailDTOIn" },
           },
+        },
+      },
+
+      //----------------- ORDER LIFECYCLE INPUT DTOs -----------------//
+      ItemStatus: {
+        type: "integer",
+        enum: [0, 1, 2, 3, 4],
+        description: "0=PENDING, 1=IN_PREP, 2=READY, 3=DELIVERED, 4=CANCELLED",
+      },
+      PaymentMethod: {
+        type: "string",
+        enum: ["cash", "card", "transfer"],
+        description: "cash | card | transfer",
+      },
+      ChangeOrderStatusDTOIn: {
+        type: "object",
+        required: ["status"],
+        properties: {
+          status: { $ref: "#/components/schemas/OrderStatus" },
+        },
+      },
+      AddOrderItemDTOIn: {
+        type: "object",
+        required: ["productID", "quantity"],
+        properties: {
+          productID: { type: "string", description: "Product Mongo ID" },
+          quantity: { type: "integer", minimum: 1 },
+          extras: { type: "array", items: { type: "string" }, description: "Component IDs to add as extras" },
+          removed: { type: "array", items: { type: "string" }, description: "Component IDs to remove" },
+          notes: { type: "string" },
+          productionArea: { type: "string", description: "Production area ID" },
+        },
+      },
+      UpdateItemStatusDTOIn: {
+        type: "object",
+        required: ["status"],
+        properties: {
+          status: { $ref: "#/components/schemas/ItemStatus" },
+        },
+      },
+      ApplyDiscountDTOIn: {
+        type: "object",
+        required: ["discountAmount"],
+        properties: {
+          discountAmount: { type: "number", minimum: 0 },
+          reason: { type: "string" },
+        },
+      },
+      CloseOrderDTOIn: {
+        type: "object",
+        required: ["paymentMethod"],
+        properties: {
+          paymentMethod: { $ref: "#/components/schemas/PaymentMethod" },
+          tipAmount: { type: "number", minimum: 0 },
         },
       },
     },

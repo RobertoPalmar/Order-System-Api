@@ -1,4 +1,9 @@
-import { OrderStatus, OrderType } from "@global/definitions";
+import {
+  ItemStatus,
+  OrderStatus,
+  OrderType,
+  PaymentMethod,
+} from "@global/definitions";
 import mongoose, { Schema, Types } from "mongoose";
 import { IBusinessUnit } from "./businessUnit.model";
 import {  ICustomer } from "./customer.model";
@@ -6,6 +11,12 @@ import {  IUser } from "./user.model";
 import {  ICurrency } from "./currency.model";
 import { IProduct, } from "./product.model";
 import {  IComponent } from "./component.model";
+import { IProductionArea } from "./productionArea.model";
+
+export interface IMinimalProductionArea {
+  _id: string;
+  name: string;
+}
 
 export interface IOrderDetail extends mongoose.Document {
   product: IProduct;
@@ -14,6 +25,9 @@ export interface IOrderDetail extends mongoose.Document {
   totalPrice: number;
   extras: IComponent[];
   removed: IComponent[];
+  notes?: string;
+  itemStatus: ItemStatus;
+  productionArea?: IMinimalProductionArea;
 }
 
 export interface OrderDetail {
@@ -23,6 +37,9 @@ export interface OrderDetail {
   totalPrice: number;
   extras: IComponent[] | Types.ObjectId[];
   removed: IComponent[] | Types.ObjectId[];
+  notes?: string;
+  itemStatus?: ItemStatus;
+  productionArea?: IMinimalProductionArea;
 }
 
 const MinimalCustomerSchema = new Schema({
@@ -60,6 +77,16 @@ const MinimalComponentSchema = new Schema({
   description: { type: String, required: true },
 });
 
+const MinimalProductionAreaSchema = new Schema({
+  _id: { type: String, required: true },
+  name: { type: String, required: true },
+});
+
+//DEFINE ITEM STATUS ENUM VALUES
+const itemStatusValues: ItemStatus[] = Object.values(ItemStatus).filter(
+  (value) => typeof value === "number"
+) as ItemStatus[];
+
 const OrderDetailSchema = new Schema<IOrderDetail>(
   {
     product: MinimalProductSchema,
@@ -68,6 +95,16 @@ const OrderDetailSchema = new Schema<IOrderDetail>(
     totalPrice: { type: Number, required: true },
     extras: [MinimalComponentSchema],
     removed: [MinimalComponentSchema],
+    notes: { type: String },
+    itemStatus: {
+      type: Number,
+      enum: {
+        values: itemStatusValues,
+        message: "{VALUE} is not a valid item status",
+      },
+      default: ItemStatus.PENDING,
+    },
+    productionArea: MinimalProductionAreaSchema,
   },
   { timestamps: true }
 );
@@ -83,6 +120,14 @@ export interface IOrder extends mongoose.Document {
   amount: number;
   currency: ICurrency;
   details: IOrderDetail[];
+  tableNumber?: string;
+  partySize?: number;
+  notes?: string;
+  discountAmount: number;
+  tipAmount: number;
+  paymentMethod: PaymentMethod | null;
+  paidAt: Date | null;
+  closedAt: Date | null;
 }
 
 //DEFINE ORDER ENUMS VALUES
@@ -92,6 +137,10 @@ const orderStatusValues: OrderStatus[] = Object.values(OrderStatus).filter(
 const orderTypeValues: OrderType[] = Object.values(OrderType).filter(
   (value) => typeof value === "number"
 );
+
+const paymentMethodValues: PaymentMethod[] = Object.values(PaymentMethod).filter(
+  (value) => typeof value === "string"
+) as PaymentMethod[];
 
 const OrderSchema = new Schema<IOrder>(
   {
@@ -123,8 +172,28 @@ const OrderSchema = new Schema<IOrder>(
     amount: { type: Number, required: true },
     currency: MinimalCurrencySchema,
     details: [OrderDetailSchema],
+    tableNumber: { type: String },
+    partySize: { type: Number, min: 1 },
+    notes: { type: String },
+    discountAmount: { type: Number, default: 0, min: 0 },
+    tipAmount: { type: Number, default: 0, min: 0 },
+    paymentMethod: {
+      type: String,
+      enum: {
+        values: paymentMethodValues,
+        message: "{VALUE} is not a valid payment method",
+      },
+      default: null,
+    },
+    paidAt: { type: Date, default: null },
+    closedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
+
+// Compound indexes for common mobile queries
+OrderSchema.index({ businessUnit: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ businessUnit: 1, tableNumber: 1, status: 1 });
+OrderSchema.index({ businessUnit: 1, "details.productionArea._id": 1, "details.itemStatus": 1 });
 
 export const Order = mongoose.model<IOrder>("Order", OrderSchema);

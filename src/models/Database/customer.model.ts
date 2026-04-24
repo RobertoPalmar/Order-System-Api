@@ -26,4 +26,7 @@ export const CustomerSchema = new mongoose.Schema<ICustomer>(
   { timestamps: true }
 )
 
-export const Customer = mongoose.model<ICustomer>("Customer", CustomerSchema); 
+// Text index for fast customer lookup by name, phone, or document
+CustomerSchema.index({ firstName: "text", lastName: "text", phone: "text", documentID: "text" });
+
+export const Customer = mongoose.model<ICustomer>("Customer", CustomerSchema);

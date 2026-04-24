@@ -19,12 +19,27 @@ export enum OrderStatus {
   IN_PROGRESS,
   COMPLETED,
   CANCELLED,
+  CLOSED,
 }
 
 export enum OrderType {
   DINE_IN, //TABLE ORDER
   TAKE_AWAY, //COUNTER ORDER
   DELIVERY, //DELIVERY ORDER
+}
+
+export enum ItemStatus {
+  PENDING,
+  IN_PREP,
+  READY,
+  DELIVERED,
+  CANCELLED,
+}
+
+export enum PaymentMethod {
+  CASH = "cash",
+  CARD = "card",
+  TRANSFER = "transfer",
 }
 
 export enum TokenType {

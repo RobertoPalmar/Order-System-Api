@@ -1824,3 +1824,390 @@ export {};
  *       404: { $ref: '#/components/responses/NotFound' }
  *       500: { $ref: '#/components/responses/UnexpectedError' }
  */
+
+/* =================== ORDER LIFECYCLE (S5 batch) =================== */
+
+/**
+ * @swagger
+ * /Orders/changeOrderStatus/{orderID}:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Change the status of an order
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN, ANFITRION, or WAITER.
+ *     x-role-matrix: [ADMIN, ANFITRION, WAITER]
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ChangeOrderStatusDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/addItem/{orderID}:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Add a line item to an existing order
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN, ANFITRION, or WAITER.
+ *     x-role-matrix: [ADMIN, ANFITRION, WAITER]
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/AddOrderItemDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Item added, updated order returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/removeItem/{orderID}/{detailID}:
+ *   delete:
+ *     tags: [Orders]
+ *     summary: Remove a line item from an order
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN, ANFITRION, or WAITER.
+ *     x-role-matrix: [ADMIN, ANFITRION, WAITER]
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: detailID
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Item removed, updated order returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/updateItemStatus/{orderID}/{detailID}:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Update the preparation status of a line item
+ *     description: Requires BUSINESS_TOKEN. Any role (waiter, cook, etc.).
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: detailID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/UpdateItemStatusDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Item status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/applyDiscount/{orderID}:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Apply a monetary discount to an order
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION.
+ *     x-role-matrix: [ADMIN, ANFITRION]
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ApplyDiscountDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Discount applied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/closeOrder/{orderID}:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Collect payment and close an order
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION.
+ *     x-role-matrix: [ADMIN, ANFITRION]
+ *     parameters:
+ *       - in: path
+ *         name: orderID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CloseOrderDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Order closed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/byTable/{tableNumber}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Get active orders for a table
+ *     description: Requires BUSINESS_TOKEN. Returns orders matching the given table number for the current business unit.
+ *     parameters:
+ *       - in: path
+ *         name: tableNumber
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Orders for the table
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Orders/byProductionArea/{areaID}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Get orders with items assigned to a production area
+ *     description: Requires BUSINESS_TOKEN. Used by kitchen stations to see pending items.
+ *     parameters:
+ *       - in: path
+ *         name: areaID
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Orders with items for the production area
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/OrderDTOOut' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/* =================== PRODUCTS — new endpoints =================== */
+
+/**
+ * @swagger
+ * /Products/toggleAvailability/{productID}:
+ *   patch:
+ *     tags: [Products]
+ *     summary: Toggle the availability flag of a product
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION. Flips the isAvailable boolean without affecting the active/inactive status.
+ *     x-role-matrix: [ADMIN, ANFITRION]
+ *     parameters:
+ *       - in: path
+ *         name: productID
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Product with updated availability
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/ProductDTOOut' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Products/uploadImage/{productID}:
+ *   post:
+ *     tags: [Products]
+ *     summary: Upload or replace the product image
+ *     description: Requires BUSINESS_TOKEN. ADMIN role only. Accepts multipart/form-data with a single field named "image".
+ *     x-role-matrix: [ADMIN]
+ *     parameters:
+ *       - in: path
+ *         name: productID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [image]
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpg, png, webp — max 5 MB)
+ *     responses:
+ *       200:
+ *         description: Product updated with the new image URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/ProductDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/* =================== SYSTEM =================== */
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Health check
+ *     description: >
+ *       Lives at the root path (NOT under /v1). Returns the MongoDB connection
+ *       state and server uptime. HTTP 200 when healthy, 503 when MongoDB is
+ *       disconnected.
+ *     servers:
+ *       - url: /
+ *         description: root (no /v1 prefix)
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Service healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: ok }
+ *                 mongo: { type: string, example: connected }
+ *                 uptime: { type: number }
+ *                 timestamp: { type: string, format: date-time }
+ *       503:
+ *         description: Service degraded (MongoDB disconnected)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: degraded }
+ *                 mongo: { type: string, example: disconnected }
+ *                 uptime: { type: number }
+ *                 timestamp: { type: string, format: date-time }
+ */

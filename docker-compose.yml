@@ -23,6 +23,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: comandas-api
+    command: npm run dev
     depends_on:
       mongo:
         condition: service_healthy
@@ -41,6 +42,13 @@ services:
       - ./package-lock.json:/app/package-lock.json
       - ./tsconfig.json:/app/tsconfig.json
       - /app/node_modules
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
 
 volumes:
   mongo_data:

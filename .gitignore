@@ -44,3 +44,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Local image uploads (served via /static)
+uploads/

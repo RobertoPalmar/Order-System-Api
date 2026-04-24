@@ -3,16 +3,20 @@ import {
   productBasicPopulate,
   productTotalPopulate,
 } from "@global/definitions";
+import { NotFoundError } from "@global/errors";
 import { getCurrentContext } from "@global/requestContext";
+import { emitProductAvailabilityChanged } from "@realtime/orderEvents";
 import { Order } from "@models/database/order.model";
 import { Product } from "@models/database/product.model";
 import { ProductDTOOut } from "@models/DTOs/product.DTO";
 import { Pagination } from "@models/response/pagination.model";
+import { asyncHandler } from "@utils/asyncHandler.utils";
 import { getPaginationParams, isNullOrEmpty } from "@utils/functions.utils";
 import { mapperHub } from "@utils/mappers/mapperHub";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import { Request, Response } from "express";
 import { repositoryHub } from "src/repositories/repositoryHub";
+import { getStorageService } from "@services/storage.service";
 
 // ACTIVE ORDER STATUSES — DELETES REFERENCING ORDERS IN THESE STATES ARE BLOCKED
 const ACTIVE_ORDER_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CREATED, OrderStatus.IN_PROGRESS];
@@ -301,3 +305,63 @@ export const deleteProduct = async (req: Request, res: Response) => {
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
 };
+
+// ─── UPLOAD PRODUCT IMAGE ─────────────────────────────────────────────────────
+export const uploadProductImage = asyncHandler(async (req: Request, res: Response) => {
+  //GET TOKEN DATA
+  const ctx = getCurrentContext();
+
+  //GET PARAMS
+  const { productID } = req.params;
+
+  //VALIDATE PRODUCT EXISTS
+  const product = await repositoryHub.productRepository.findById(productID);
+  if (!product) throw new NotFoundError("Product");
+
+  //SAVE FILE
+  const storage = getStorageService();
+  const detected = (req as any).detectedFileType as { ext: string; mime: string };
+  const url = await storage.saveImage(req.file!.buffer, detected.ext);
+
+  //UPDATE PRODUCT
+  const updated = await repositoryHub.productRepository.updateById(
+    productID,
+    { image: url } as any,
+    productTotalPopulate
+  );
+
+  //MAP DTO
+  const productDTO = mapperHub.productMapper.toDTO(updated!);
+
+  //RETURN RESPONSE
+  SuccessResponse.UPDATE(res, productDTO);
+});
+
+// ─── TOGGLE AVAILABILITY ──────────────────────────────────────────────────────
+export const toggleAvailability = asyncHandler(
+  async (req: Request, res: Response) => {
+    //GET TOKEN DATA
+    const ctx = getCurrentContext();
+
+    //GET PARAMS
+    const { productID } = req.params;
+
+    //FIND PRODUCT
+    const product = await repositoryHub.productRepository.findById(productID);
+    if (!product) throw new NotFoundError("Product");
+
+    //TOGGLE AVAILABILITY
+    const updated = await repositoryHub.productRepository.updateById(
+      productID,
+      { isAvailable: !product.isAvailable } as any,
+      productTotalPopulate
+    );
+
+    //MAP DTO
+    const productDTO = mapperHub.productMapper.toDTO(updated!);
+
+    //RETURN RESPONSE
+    SuccessResponse.UPDATE(res, productDTO);
+    emitProductAvailabilityChanged(productDTO, ctx.businessUnitID!);
+  }
+);
