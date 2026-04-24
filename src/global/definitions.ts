@@ -28,11 +28,21 @@ export enum OrderType {
 }
 
 export enum TokenType {
+  /** @deprecated Kept for backward-compat. Use USER_ACCESS + REFRESH instead. */
   USER_TOKEN,
+  /** @deprecated Kept for backward-compat. Use BUSINESS_ACCESS instead. */
   BUSINESS_TOKEN,
+  USER_ACCESS,
+  BUSINESS_ACCESS,
+  REFRESH,
 }
 
 //------------------------------------------CONSTANTS------------------------------------------//
+
+//TOKEN TTLs
+export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;            // 15 MINUTES
+export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 DAYS
+
 
 export const productTotalPopulate = [
   { path: "category", select: "id name description" },

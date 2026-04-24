@@ -1,10 +1,30 @@
 import { getCurrentContext } from "@global/requestContext";
 import { User } from "@models/database/user.model";
+import { RefreshToken } from "@models/database/refreshToken.model";
 import { Request, Response } from "express";
 import EncryptUtils from "@utils/encrypt.utils";
 import TokenUtils from "@utils/token.utils";
 import { ErrorResponse, SuccessResponse } from "@utils/responseHandler.utils";
 import { repositoryHub } from "src/repositories/repositoryHub";
+
+//HELPER: ISSUE A NEW REFRESH TOKEN, PERSIST HASH AND METADATA
+const issueAndStoreRefreshToken = async (
+  userID: string,
+  req: Request
+): Promise<string> => {
+  const { token, expiresAt } = TokenUtils.generateRefreshToken(userID);
+  const tokenHash = TokenUtils.hashToken(token);
+
+  await repositoryHub.refreshTokenRepository.create({
+    tokenHash,
+    user: userID as any,
+    expiresAt,
+    userAgent: req.headers["user-agent"] as string | undefined,
+    ip: req.ip,
+  } as any);
+
+  return token;
+};
 
 export const signUp = async (req: Request, res: Response) => {
   try {
@@ -30,7 +50,7 @@ export const signUp = async (req: Request, res: Response) => {
     }
 
     const saveUser = await newUser.save();
-    const token = TokenUtils.generateUserToken(saveUser);
+    const token = TokenUtils.generateUserAccessToken(saveUser);
     SuccessResponse.CREATION(res, {token});
   } catch (ex: any) {
     console.log("❌ Error in signUp:", ex);
@@ -54,8 +74,14 @@ export const signIn = async (req: Request, res: Response) : Promise<void> => {
       return;
     }
 
-    const token = TokenUtils.generateUserToken(validUser);
-    SuccessResponse.GET(res, {token});
+    //GENERATE ACCESS + REFRESH
+    const accessToken = TokenUtils.generateUserAccessToken(validUser);
+    const refreshToken = await issueAndStoreRefreshToken(
+      (validUser._id as any).toString(),
+      req
+    );
+
+    SuccessResponse.GET(res, { accessToken, refreshToken });
   } catch (ex: any) {
     console.log("❌ Error in signIn:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
@@ -90,10 +116,112 @@ export const signInBussinesUnit = async (req:Request, res:Response): Promise<voi
       return;
     }
 
-    const businessToken = TokenUtils.generateBusinessToken(ctx.userID, membership.role, validBusinessUnit)
-    SuccessResponse.GET(res, {businessToken})
+    //BUSINESS ACCESS ONLY — REFRESH STAYS USER-LEVEL
+    const businessAccessToken = TokenUtils.generateBusinessAccessToken(ctx.userID, membership.role, validBusinessUnit)
+    SuccessResponse.GET(res, { businessAccessToken })
   } catch (ex: any) {
     console.log("❌ Error in signIn:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
 }
+
+export const refresh = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken } = req.body as { refreshToken: string };
+
+    //VERIFY JWT SIGNATURE + TYPE === 'refresh'
+    const { decoded, expired } = TokenUtils.verifyRefreshToken(refreshToken);
+
+    if (expired) {
+      ErrorResponse.EXPIRED_TOKEN(res);
+      return;
+    }
+
+    if (decoded == null) {
+      ErrorResponse.INVALID_TOKEN(res);
+      return;
+    }
+
+    const payload = decoded as any;
+    const userID = payload.userID as string;
+
+    //HASH + LOOKUP
+    const incomingHash = TokenUtils.hashToken(refreshToken);
+    const stored = await RefreshToken.findOne({ tokenHash: incomingHash });
+
+    //NOT FOUND: TAMPERED OR NEVER ISSUED (OR TTL-SWEPT AFTER EXPIRY)
+    if (stored == null) {
+      ErrorResponse.INVALID_TOKEN(res);
+      return;
+    }
+
+    //REUSE DETECTED — REVOKE ALL REFRESH TOKENS FOR THIS USER
+    if (stored.revokedAt != null) {
+      await RefreshToken.updateMany(
+        { user: userID, revokedAt: { $exists: false } },
+        { $set: { revokedAt: new Date() } }
+      );
+      ErrorResponse.INVALID_TOKEN(res);
+      return;
+    }
+
+    //EXPIRED BY STORED DATE (DEFENSE-IN-DEPTH ALONGSIDE JWT exp)
+    if (stored.expiresAt.getTime() < Date.now()) {
+      ErrorResponse.EXPIRED_TOKEN(res);
+      return;
+    }
+
+    //ISSUE NEW PAIR
+    const user = await repositoryHub.userRepository.findById(userID);
+    if (user == null) {
+      ErrorResponse.INVALID_USER_REQUEST(res);
+      return;
+    }
+
+    const newAccessToken = TokenUtils.generateUserAccessToken(user);
+    const newRefreshTokenData = TokenUtils.generateRefreshToken(userID);
+    const newRefreshHash = TokenUtils.hashToken(newRefreshTokenData.token);
+
+    //INSERT NEW REFRESH HASH
+    await repositoryHub.refreshTokenRepository.create({
+      tokenHash: newRefreshHash,
+      user: userID as any,
+      expiresAt: newRefreshTokenData.expiresAt,
+      userAgent: req.headers["user-agent"] as string | undefined,
+      ip: req.ip,
+    } as any);
+
+    //ROTATE — MARK OLD AS REVOKED AND LINK FORWARD
+    stored.revokedAt = new Date();
+    stored.replacedByTokenHash = newRefreshHash;
+    await stored.save();
+
+    SuccessResponse.GET(res, {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshTokenData.token,
+    });
+  } catch (ex: any) {
+    console.log("❌ Error in refresh:", ex);
+    ErrorResponse.UNEXPECTED_ERROR(res);
+  }
+};
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken } = req.body as { refreshToken: string };
+
+    //IDEMPOTENT — HASH LOOKUP AND REVOKE IF PRESENT
+    const incomingHash = TokenUtils.hashToken(refreshToken);
+    const stored = await RefreshToken.findOne({ tokenHash: incomingHash });
+
+    if (stored != null && stored.revokedAt == null) {
+      stored.revokedAt = new Date();
+      await stored.save();
+    }
+
+    SuccessResponse.GET(res, { message: "Logged out" });
+  } catch (ex: any) {
+    console.log("❌ Error in logout:", ex);
+    ErrorResponse.UNEXPECTED_ERROR(res);
+  }
+};

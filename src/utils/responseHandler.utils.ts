@@ -135,7 +135,7 @@ export class ErrorResponse {
   }
 
   static INVALID_TOKEN_TYPE(res: Response, tokenType:TokenType): void {
-    this.set(res, 4013, `Invalid token type to access. Login Requited ${enumToString(TokenType,tokenType)}`, 401);
+    this.set(res, 4013, `Invalid token type to access. Login Required ${enumToString(TokenType,tokenType)}`, 401);
   }
 
   static VALIDATION_ERROR<T>(res: Response, errorData: T): void {

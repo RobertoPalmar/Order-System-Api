@@ -9,6 +9,7 @@ import { IOrder, Order } from "@models/database/order.model";
 import { IProductionArea, ProductionArea } from "@models/database/productionArea.model";
 import { IUser, User } from "@models/database/user.model";
 import { IMembership, Membership } from "@models/database/membership.model";
+import { IRefreshToken, RefreshToken } from "@models/database/refreshToken.model";
 
 class RepositoryHub {
   businessUnitRepository: BaseRepository<IBusinessUnit>
@@ -21,6 +22,7 @@ class RepositoryHub {
   productionAreaRepository: BaseRepository<IProductionArea>
   userRepository: BaseRepository<IUser>
   membershipRepository: BaseRepository<IMembership>
+  refreshTokenRepository: BaseRepository<IRefreshToken>
 
   constructor(){
     this.businessUnitRepository = new BaseRepository<IBusinessUnit>(BusinessUnit, { scoped: false });
@@ -33,6 +35,7 @@ class RepositoryHub {
     this.productionAreaRepository = new BaseRepository<IProductionArea>(ProductionArea, { scoped: true });
     this.userRepository = new BaseRepository<IUser>(User, { scoped: false });
     this.membershipRepository = new BaseRepository<IMembership>(Membership, { scoped: true });
+    this.refreshTokenRepository = new BaseRepository<IRefreshToken>(RefreshToken, { scoped: false });
   }
 }
 
