@@ -21,7 +21,6 @@ export class ProductDTOIn {
   @IsNumber() @Min(0) cost: number = 0;
   @IsString() currency!: string;
   @IsBoolean() status: boolean = true;
-  @IsOptional() @IsBoolean() isAvailable?: boolean;
   @IsString() @IsOptional() productArea?: string;
 }
 
@@ -35,7 +34,6 @@ export class PartialProductDTOIn {
   @IsOptional() @IsNumber() @Min(0) cost?: number;
   @IsOptional() @IsString() currency?: string;
   @IsOptional() @IsBoolean() status?: boolean;
-  @IsOptional() @IsBoolean() isAvailable?: boolean;
   @IsOptional() @IsString() productArea?: string;
 }
 
@@ -50,7 +48,6 @@ export class ProductDTOOut {
   @Expose() cost: number;
   @Expose() @Type(() => CurrencyDTOOut) currency: CurrencyDTOOut;
   @Expose() status: boolean;
-  @Expose() isAvailable: boolean;
   @Expose() @Type(() => BusinessUnitDTOOut) businessUnit: BusinessUnitDTOOut;
 
   constructor(
@@ -64,8 +61,7 @@ export class ProductDTOOut {
     cost: number,
     currency: CurrencyDTOOut,
     status: boolean,
-    businessUnit: BusinessUnitDTOOut,
-    isAvailable: boolean = true
+    businessUnit: BusinessUnitDTOOut
   ) {
     this.id = id;
     this.name = name;
@@ -78,6 +74,5 @@ export class ProductDTOOut {
     this.currency = currency;
     this.status = status;
     this.businessUnit = businessUnit;
-    this.isAvailable = isAvailable;
   }
 }

@@ -64,6 +64,7 @@ export default class TokenUtils {
     return jwt.sign(
       {
         userID: user._id,
+        tv: user.tokenVersion ?? 0,
         type: TOKEN_TYPE_USER_ACCESS,
       },
       SECRET_KEY_TOKEN,
@@ -71,10 +72,11 @@ export default class TokenUtils {
   }
 
   /** Generate a short-lived business access token (15 min) */
-  static generateBusinessAccessToken = (userID: string, role: UserRole, businessUnit: IBusinessUnit) => {
+  static generateBusinessAccessToken = (user: IUser, role: UserRole, businessUnit: IBusinessUnit) => {
     return jwt.sign(
       {
-        userID,
+        userID: user._id,
+        tv: user.tokenVersion ?? 0,
         role,
         businessUnitID: businessUnit != undefined ? businessUnit._id : null,
         type: TOKEN_TYPE_BUSINESS_ACCESS,
@@ -114,8 +116,8 @@ export default class TokenUtils {
   /**
    * @deprecated Use generateBusinessAccessToken. Alias kept for backward-compat.
    */
-  static generateBusinessToken = (userID: string, role: UserRole, businessUnit: IBusinessUnit) => {
-    return TokenUtils.generateBusinessAccessToken(userID, role, businessUnit);
+  static generateBusinessToken = (user: IUser, role: UserRole, businessUnit: IBusinessUnit) => {
+    return TokenUtils.generateBusinessAccessToken(user, role, businessUnit);
   }
 
 }

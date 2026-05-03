@@ -1,4 +1,6 @@
-import { ItemStatus, orderPopulate, OrderStatus } from "@global/definitions";
+import { ItemStatus, orderPopulate, OrderStatus, OrderType } from "@global/definitions";
+import { nextOrderCode } from "@models/database/counter.model";
+import { getMainCurrency, toMain } from "@utils/currency.utils";
 import { NotFoundError, BadRequestError } from "@global/errors";
 import { assertOrderTransition, assertItemTransition } from "@global/orderStateMachine";
 import { getCurrentContext } from "@global/requestContext";
@@ -206,43 +208,50 @@ export const createOrder = async (req: Request, res: Response) => {
 const MapOrderDTOInToOrderEntity = async (
   req: Request,
   res: Response,
-  businessUnitID: String
+  businessUnitID: string
 ): Promise<[boolean, IOrder | null]> => {
+  //GET TOKEN DATA — owner falls back to logged-in user when not provided
+  const ctx = getCurrentContext();
+
   //GET PARAMS
   const {
-    code,
     description,
     status,
     type,
     customer,
     owner,
-    amount,
-    currency,
     details,
+    tableNumber,
+    partySize,
+    notes,
+    discountAmount,
   } = req.body;
 
-  //VALIDATE EXISTING ORDER
-  const existingOrder = await repositoryHub.orderRepository.findByFilter({
-    code,
-  });
-  if (existingOrder.data.length > 0) {
-    ErrorResponse.INVALID_FIELD(
-      res,
-      "code",
-      "This order code is already in use"
-    );
+  //RESOLVE BU MAIN CURRENCY — every price stored on the order is normalized
+  //to this currency via the conversion helpers in @utils/currency.utils.
+  let mainCurrency;
+  try {
+    mainCurrency = await getMainCurrency(businessUnitID);
+  } catch (err: any) {
+    ErrorResponse.INVALID_FIELD(res, "currency", err.message);
     return [false, null];
   }
+
   const formatedDetails = plainToInstance(OrderDetailDTOIn, details as []);
 
-  //GET PRODUCTS
+  //GET PRODUCTS — populate productArea (for cocina snapshot) and currency
+  //(for FX conversion to main).
   const productIDList = formatedDetails.map(
     (d) => new Types.ObjectId(d.product)
   );
   const { data: productFind } =
-    await repositoryHub.productRepository.findByFilter({
-      _id: { $in: productIDList },
-    });
+    await repositoryHub.productRepository.findByFilter(
+      { _id: { $in: productIDList } },
+      [
+        { path: "productArea", select: "id name" },
+        { path: "currency", select: "id ISO symbol exchangeRate main" },
+      ]
+    );
 
   //VALIDATE DETAILS PRODUCT CODES
   if (productIDList.length > productFind.length) {
@@ -266,44 +275,77 @@ const MapOrderDTOInToOrderEntity = async (
     return [false, null];
   }
 
-  //GET USER
-  const userReference = await repositoryHub.userRepository.findById(owner);
+  //GET USER — fallback to logged-in user when owner not sent
+  const ownerID = owner ?? ctx.userID;
+  const userReference = await repositoryHub.userRepository.findById(ownerID);
   if (!userReference) {
     ErrorResponse.INVALID_FIELD(res, "owner", "Not found");
     return [false, null];
   }
 
-  //GET CURRENCY
-  const currencyReference = await repositoryHub.currencyRepository.findById(currency);
-  if (!currencyReference) {
-    ErrorResponse.INVALID_FIELD(res, "currency", "Not found");
-    return [false, null];
-  }
-
-  //GET EXTRAS AND REMOVED LIST
+  //GET EXTRAS AND REMOVED LIST — populate extra.currency for FX conversion
   const extrasAndRemovedIDList = distinctBy(
     formatedDetails.flatMap((d) => d.extras.concat(d.removed)),
     (d) => d
   );
   const extrasAndRemovedList = (
-    await repositoryHub.componentRepository.findByFilter({
-      _id: { $in: extrasAndRemovedIDList },
-    })
+    await repositoryHub.componentRepository.findByFilter(
+      { _id: { $in: extrasAndRemovedIDList } },
+      [{ path: "extra.currency", select: "id ISO symbol exchangeRate main" }]
+    )
   ).data;
 
-  //FORMAT DETAILS DTO IN DETAIL MODEL
+  //VALIDATE EXTRAS — every component used as extra must have extra=true
+  const requestedExtraIDs = distinctBy(
+    formatedDetails.flatMap((d) => d.extras),
+    (d) => d
+  );
+  for (const extraID of requestedExtraIDs) {
+    const component = extrasAndRemovedList.find((c) => c.id == extraID);
+    if (!component || !component.extra) {
+      ErrorResponse.INVALID_FIELD(
+        res,
+        "extras",
+        `Component ${extraID} is not allowed as extra`
+      );
+      return [false, null];
+    }
+  }
+
+  //FORMAT DETAILS DTO IN DETAIL MODEL — productionArea is derived from the
+  //product (snapshot at order time) so clients never send it explicitly.
+  //Every monetary value is converted to BU's main currency before storage.
   const orderDetailsList: OrderDetail[] = formatedDetails.map((d) => {
     const relatedProduct = productFind.find((p) => p.id == d.product);
-    const unitPrice = relatedProduct!!.price;
-    const totalPrice = unitPrice * d.quantity;
+    const productCurrency = (relatedProduct as any)?.currency;
+    const productRate = productCurrency?.exchangeRate ?? 1;
 
-    //GET EXTRAS
-    const extrasList = extrasAndRemovedList.filter((c) =>
-      d.extras.includes(c.id)
-    );
+    const unitPrice = toMain(relatedProduct!!.price, productRate);
+
+    //GET EXTRAS — wrap in {component, quantity:1}; quantity is reserved for
+    //future per-extra qty support (today only IDs are accepted from the API).
+    //Extra prices live in their own component currency; convert to main.
+    const extrasList = extrasAndRemovedList
+      .filter((c) => d.extras.includes(c.id))
+      .map((c) => ({ component: c, quantity: 1 }));
     const removedList = extrasAndRemovedList.filter((c) =>
       d.removed.includes(c.id)
     );
+
+    const extrasTotal = extrasList.reduce((sum, e) => {
+      const extraCurrency = (e.component as any)?.extra?.currency;
+      const extraRate = extraCurrency?.exchangeRate ?? 1;
+      const priceMain = toMain(e.component.extra?.price ?? 0, extraRate);
+      return sum + priceMain * e.quantity;
+    }, 0);
+
+    const totalPrice = unitPrice * d.quantity + extrasTotal;
+
+    //SNAPSHOT PRODUCTION AREA FROM PRODUCT
+    const productAreaRef = (relatedProduct as any)?.productArea;
+    const productionArea = productAreaRef && productAreaRef._id
+      ? { _id: productAreaRef._id.toString(), name: productAreaRef.name }
+      : undefined;
 
     const newDetail: OrderDetail = {
       product: relatedProduct!!,
@@ -312,26 +354,91 @@ const MapOrderDTOInToOrderEntity = async (
       totalPrice,
       extras: extrasList,
       removed: removedList,
+      notes: d.notes,
+      itemStatus: d.itemStatus ?? ItemStatus.PENDING,
+      productionArea,
     };
 
     return newDetail;
   });
 
-  //FORMAT ORDER
+  //COMPUTE AMOUNT FROM DETAILS — clients no longer send it (already in main)
+  const amount = orderDetailsList.reduce((sum, d) => sum + d.totalPrice, 0);
+
+  //GENERATE 8-DIGIT PADDED, PER-BU AUTOINCREMENT CODE
+  const code = await nextOrderCode(businessUnitID);
+
+  //FORMAT ORDER — defaults: status=CREATED, type=DINE_IN. Currency is
+  //always the BU's main currency (resolved above); FX conversion already
+  //applied to unit/total prices and amount.
   const order = new Order({
     code,
     description,
-    status,
-    type,
+    status: status ?? OrderStatus.CREATED,
+    type: type ?? OrderType.DINE_IN,
     customer: customerReference,
     owner: userReference,
     amount,
-    currency: currencyReference,
+    currency: mainCurrency,
     details: orderDetailsList,
     businessUnit: businessUnitID,
+    tableNumber,
+    partySize,
+    notes,
+    discountAmount,
   });
 
   return [true, order];
+};
+
+// Build a partial update payload for an Order, resolving any incoming
+// reference IDs (customer, owner) into the embedded snapshot shape that the
+// Order schema expects. Pass-through fields are scalars only — money values
+// (amount, tipAmount), the immutable code, and lifecycle timestamps go
+// through their dedicated endpoints (close/discount/items), not here.
+// Returns [ok, payload | errorMessage]; caller surfaces the error.
+const buildOrderUpdatePayload = async (
+  body: any
+): Promise<[true, any] | [false, { field: string; message: string }]> => {
+  const update: any = {};
+
+  const scalarKeys = [
+    "description",
+    "status",
+    "type",
+    "tableNumber",
+    "partySize",
+    "notes",
+    "discountAmount",
+  ] as const;
+  for (const k of scalarKeys) {
+    if (body[k] !== undefined) update[k] = body[k];
+  }
+
+  if (body.customer) {
+    const customer = await repositoryHub.customerRepository.findById(body.customer);
+    if (!customer) return [false, { field: "customer", message: "Not found" }];
+    update.customer = customer;
+  }
+
+  if (body.owner) {
+    const user = await repositoryHub.userRepository.findById(body.owner);
+    if (!user) return [false, { field: "owner", message: "Not found" }];
+    update.owner = user;
+  }
+
+  if (body.details !== undefined) {
+    return [
+      false,
+      {
+        field: "details",
+        message:
+          "Use /Orders/:id/items endpoints to mutate order details (FX, snapshots, and amount are recomputed there)",
+      },
+    ];
+  }
+
+  return [true, update];
 };
 
 export const updateOrder = async (req: Request, res: Response) => {
@@ -348,10 +455,21 @@ export const updateOrder = async (req: Request, res: Response) => {
       return;
     }
 
+    //BUILD PAYLOAD — resolve refs into embedded snapshots
+    const [ok, payloadOrError] = await buildOrderUpdatePayload(req.body);
+    if (!ok) {
+      ErrorResponse.INVALID_FIELD(
+        res,
+        payloadOrError.field,
+        payloadOrError.message
+      );
+      return;
+    }
+
     //UPDATE ORDER
     const updatedOrder = await repositoryHub.orderRepository.updateById(
       req.params.orderID,
-      req.body,
+      payloadOrError,
       orderPopulate
     );
 
@@ -398,14 +516,22 @@ const resolveOrderItem = async (
   body: AddOrderItemDTOIn,
   businessUnitID: string
 ): Promise<OrderDetail> => {
-  //GET PRODUCT
-  const product = await repositoryHub.productRepository.findById(body.productID);
+  //GET PRODUCT — populate productArea (snapshot) and currency (FX)
+  const product = await repositoryHub.productRepository.findById(
+    body.productID,
+    [
+      { path: "productArea", select: "id name" },
+      { path: "currency", select: "id ISO symbol exchangeRate main" },
+    ]
+  );
   if (!product) throw new NotFoundError("Product");
 
-  const unitPrice = product.price;
-  const totalPrice = unitPrice * body.quantity;
+  //CONVERT UNIT PRICE TO BU MAIN CURRENCY
+  const productCurrency = (product as any).currency;
+  const productRate = productCurrency?.exchangeRate ?? 1;
+  const unitPrice = toMain(product.price, productRate);
 
-  //GET EXTRAS AND REMOVED COMPONENTS
+  //GET EXTRAS AND REMOVED COMPONENTS — populate extra.currency for FX
   const componentIDs = [
     ...(body.extras ?? []),
     ...(body.removed ?? []),
@@ -414,27 +540,46 @@ const resolveOrderItem = async (
   const componentsList =
     componentIDs.length > 0
       ? (
-          await repositoryHub.componentRepository.findByFilter({
-            _id: { $in: componentIDs },
-          })
+          await repositoryHub.componentRepository.findByFilter(
+            { _id: { $in: componentIDs } },
+            [{ path: "extra.currency", select: "id ISO symbol exchangeRate main" }]
+          )
         ).data
       : [];
 
-  const extrasList = componentsList.filter((c) =>
-    (body.extras ?? []).includes(c.id)
-  );
+  //VALIDATE EXTRAS — every component used as extra must have extra=true
+  for (const extraID of body.extras ?? []) {
+    const component = componentsList.find((c) => c.id == extraID);
+    if (!component || !component.extra) {
+      throw new BadRequestError(
+        "extras",
+        `Component ${extraID} is not allowed as extra`
+      );
+    }
+  }
+
+  //WRAP EXTRAS in {component, quantity:1}; reserved for future per-extra qty
+  const extrasList = componentsList
+    .filter((c) => (body.extras ?? []).includes(c.id))
+    .map((c) => ({ component: c, quantity: 1 }));
   const removedList = componentsList.filter((c) =>
     (body.removed ?? []).includes(c.id)
   );
 
-  //RESOLVE PRODUCTION AREA SNAPSHOT
-  let productionArea: { _id: string; name: string } | undefined;
-  if (body.productionArea) {
-    const area = await repositoryHub.productionAreaRepository.findById(
-      body.productionArea
-    );
-    if (area) productionArea = { _id: area.id, name: area.name };
-  }
+  //ADD CONVERTED EXTRAS PRICE TO TOTAL
+  const extrasTotal = extrasList.reduce((sum, e) => {
+    const extraCurrency = (e.component as any)?.extra?.currency;
+    const extraRate = extraCurrency?.exchangeRate ?? 1;
+    const priceMain = toMain(e.component.extra?.price ?? 0, extraRate);
+    return sum + priceMain * e.quantity;
+  }, 0);
+  const totalPrice = unitPrice * body.quantity + extrasTotal;
+
+  //SNAPSHOT PRODUCTION AREA FROM PRODUCT
+  const productAreaRef = (product as any).productArea;
+  const productionArea = productAreaRef && productAreaRef._id
+    ? { _id: productAreaRef._id.toString(), name: productAreaRef.name }
+    : undefined;
 
   const newDetail: OrderDetail = {
     product,

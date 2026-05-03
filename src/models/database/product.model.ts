@@ -15,7 +15,6 @@ export interface IProduct extends mongoose.Document {
   cost: number;
   currency: Types.ObjectId | ICurrency;
   status: boolean;
-  isAvailable: boolean;
   productArea: Types.ObjectId | IProductionArea;
   businessUnit: Types.ObjectId | IBusinessUnit;
 }
@@ -44,8 +43,7 @@ export const ProductSchema = new Schema<IProduct>(
       ref: "Currency",
       required: true,
     },
-    status: { type: Boolean, required: true },
-    isAvailable: { type: Boolean, default: true },
+    status: { type: Boolean, required: true, default: true },
     productArea: {
       type: Schema.Types.ObjectId,
       ref: "ProductionArea",
@@ -60,7 +58,7 @@ export const ProductSchema = new Schema<IProduct>(
   { timestamps: true }
 );
 
-// Compound index for category/availability filtering on mobile menu view
-ProductSchema.index({ businessUnit: 1, category: 1, isAvailable: 1 });
+// Compound index for category/status filtering on mobile menu view
+ProductSchema.index({ businessUnit: 1, category: 1, status: 1 });
 
 export const Product = mongoose.model<IProduct>("Product", ProductSchema);

@@ -27,8 +27,4 @@ export class SignUpDTO {
 
   @IsString()
   name!: string;
-
-  @IsOptional()
-  @IsString()
-  status?: string;
 }

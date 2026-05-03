@@ -7,8 +7,6 @@ import {
 import { Expose, Type } from "class-transformer";
 import {
   IsArray,
-  IsDate,
-  IsDecimal,
   IsEnum,
   IsMongoId,
   IsNumber,
@@ -44,51 +42,47 @@ export class OrderDetailDTOIn {
   @IsString({ each: true }) removed: string[] = [];
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsEnum(ItemStatus) itemStatus?: ItemStatus;
-  @IsOptional() @IsString() productionArea?: string;
 }
 
 export class OrderDTOIn {
-  @IsString() code!: string;
-  @IsString() description!: string;
-  @IsEnum(OrderStatus) status!: OrderStatus;
-  @IsEnum(OrderType) type!: OrderType;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsEnum(OrderStatus) status?: OrderStatus;
+  @IsOptional() @IsEnum(OrderType) type?: OrderType;
   @IsString() customer!: string;
-  @IsString() owner!: string;
-  @IsNumber() amount!: number;
-  @IsString() currency!: string;
+  @IsOptional() @IsString() owner?: string;
   @Type(() => OrderDetailDTOIn) details!: OrderDetailDTOIn[];
 
-  // NEW fields (all optional for backward-compat with existing clients)
   @IsOptional() @IsString() tableNumber?: string;
   @IsOptional() @IsNumber() @Min(1) partySize?: number;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
-  @IsOptional() @IsNumber() @Min(0) tipAmount?: number;
-  @IsOptional() @IsEnum(PaymentMethod) paymentMethod?: PaymentMethod;
-  @IsOptional() @IsDate() @Type(() => Date) paidAt?: Date;
-  @IsOptional() @IsDate() @Type(() => Date) closedAt?: Date;
 }
 
 export class PartialOrderDTOIn {
-  @IsOptional() @IsString() code?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsEnum(OrderStatus) status?: OrderStatus;
   @IsOptional() @IsEnum(OrderType) type?: OrderType;
   @IsOptional() @IsString() customer?: string;
   @IsOptional() @IsString() owner?: string;
-  @IsOptional() @IsDecimal() amount?: number;
-  @IsOptional() @IsString() currency?: string;
   @IsOptional() @Type(() => OrderDetailDTOIn) details?: OrderDetailDTOIn[];
 
-  // NEW fields
   @IsOptional() @IsString() tableNumber?: string;
   @IsOptional() @IsNumber() @Min(1) partySize?: number;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
-  @IsOptional() @IsNumber() @Min(0) tipAmount?: number;
-  @IsOptional() @IsEnum(PaymentMethod) paymentMethod?: PaymentMethod;
-  @IsOptional() @IsDate() @Type(() => Date) paidAt?: Date;
-  @IsOptional() @IsDate() @Type(() => Date) closedAt?: Date;
+}
+
+// Output shape for a single extra line in an order detail. Keeps the full
+// component snapshot together with the quantity (always 1 today; reserved for
+// future per-extra quantity support — see OrderDetailDTOIn.extras).
+export class OrderExtraDTOOut {
+  @Expose() @Type(() => ComponentDTOOut) component: ComponentDTOOut;
+  @Expose() quantity: number;
+
+  constructor(component: ComponentDTOOut, quantity: number = 1) {
+    this.component = component;
+    this.quantity = quantity;
+  }
 }
 
 export class OrderDetailDTOOut {
@@ -96,7 +90,7 @@ export class OrderDetailDTOOut {
   @Expose() quantity: number;
   @Expose() unitPrice: number;
   @Expose() totalPrice: number;
-  @Expose() extras: ComponentDTOOut[];
+  @Expose() @Type(() => OrderExtraDTOOut) extras: OrderExtraDTOOut[];
   @Expose() removed: ComponentDTOOut[];
   @Expose() notes?: string;
   @Expose() itemStatus: ItemStatus;
@@ -108,7 +102,7 @@ export class OrderDetailDTOOut {
     quantity: number,
     unitPrice: number,
     totalPrice: number,
-    extras: ComponentDTOOut[],
+    extras: OrderExtraDTOOut[],
     removed: ComponentDTOOut[],
     itemStatus: ItemStatus = ItemStatus.PENDING,
     notes?: string,
@@ -211,7 +205,6 @@ export class AddOrderItemDTOIn {
   @IsOptional() @IsArray() @IsMongoId({ each: true }) extras?: string[];
   @IsOptional() @IsArray() @IsMongoId({ each: true }) removed?: string[];
   @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsString() productionArea?: string;
 }
 
 /** PATCH /Orders/:id/items/:itemId/status — cocina/mesero mueven el ítem. */

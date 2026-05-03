@@ -8,13 +8,16 @@ export const enumToString = (enumType: any, value: number): string => {
 export const getPaginationParams = (
   req: Request
 ): { invalid: boolean; page: number; limit: number } => {
-  const page = parseInt(req.query.page as string);
-  const limit = parseInt(req.query.limit as string);
+  const rawPage = req.query.page as string | undefined;
+  const rawLimit = req.query.limit as string | undefined;
 
-  if (page < 1 || limit < 1) 
-    return {invalid: true, page:0, limit:0};
+  const page = rawPage === undefined ? 1 : parseInt(rawPage);
+  const limit = rawLimit === undefined ? 10 : parseInt(rawLimit);
 
-  return {invalid: false, page, limit};
+  if (Number.isNaN(page) || Number.isNaN(limit) || page < 1 || limit < 1)
+    return { invalid: true, page: 0, limit: 0 };
+
+  return { invalid: false, page, limit };
 };
 
 export const isNullOrEmpty = (str: string | null | undefined): boolean => {

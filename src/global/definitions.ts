@@ -1,11 +1,5 @@
 //---------------------------------------------ENUMS--------------------------------------------//
 
-export enum ComponentType {
-  COMPONENT,
-  EXTRA,
-  COMPONENT_AND_EXTRA,
-}
-
 export enum UserRole {
   ADMIN,
   ANFITRION,
@@ -102,7 +96,7 @@ export const currencyBasicPopulate = [
 
 export const componentBasicPopulate = [
   {
-    path: "currency",
+    path: "extra.currency",
     select: "id name symbol",
   },
   {
@@ -113,7 +107,7 @@ export const componentBasicPopulate = [
 
 export const componentTotalPopulate = [
   {
-    path: "currency",
+    path: "extra.currency",
     select: "id name ISO symbol exchangeRate main",
   },
   {

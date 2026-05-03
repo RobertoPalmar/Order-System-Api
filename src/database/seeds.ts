@@ -4,7 +4,7 @@ import { Currency } from "@models/database/currency.model";
 import { Product } from "@models/database/product.model";
 import { ProductionArea } from "@models/database/productionArea.model";
 import { User } from "@models/database/user.model";
-import { ComponentType, OrderStatus, OrderType, UserRole } from "@global/definitions";
+import { OrderStatus, OrderType, UserRole } from "@global/definitions";
 import EncryptUtils from "@utils/encrypt.utils";
 import { repositoryHub } from "src/repositories/repositoryHub";
 import { Component } from "@models/database/component.model";
@@ -12,6 +12,7 @@ import { separator } from "@global/logs";
 import { Customer } from "@models/database/customer.model";
 import { Order } from "@models/database/order.model";
 import { Membership } from "@models/database/membership.model";
+import { nextOrderCode } from "@models/database/counter.model";
 
 const createCategorySeed = async () => {
   try {
@@ -321,21 +322,17 @@ const createComponentSeed = async () => {
           name: "Extra Cheese",
           description: "Additional cheese portion",
           image: "cheese.jpg",
-          type: ComponentType.EXTRA,
           status: true,
           businessUnit: businessUnit?._id,
-          priceAsExtra: 1.50,
-          currency: currency?._id
+          extra: { price: 1.50, currency: currency?._id },
         }).save(),
         new Component({
           name: "Bacon",
           description: "Crispy bacon strips",
           image: "bacon.jpg",
-          type: ComponentType.EXTRA,
           status: true,
           businessUnit: businessUnit?._id,
-          priceAsExtra: 2.00,
-          currency: currency?._id
+          extra: { price: 2.00, currency: currency?._id },
         }).save(),
       ]);
 
@@ -507,12 +504,16 @@ const createOrderSeed = async () => {
       const totalAmount1 = orderDetails1.reduce((sum, detail) => sum + detail.totalPrice, 0);
       const totalAmount2 = orderDetails2.reduce((sum, detail) => sum + detail.totalPrice, 0);
 
+      const buID = String(businessUnit._id);
+      const code1 = await nextOrderCode(buID);
+      const code2 = await nextOrderCode(buID);
+
       const templateOrders = await Promise.all([
         new Order({
-          code: "ORD-001",
+          code: code1,
           description: "Dine-in order for table 5",
-          status: OrderStatus.COMPLETED, // OrderStatus.COMPLETED
-          type: OrderType.DINE_IN, // OrderType.DINE_IN
+          status: OrderStatus.COMPLETED,
+          type: OrderType.DINE_IN,
           businessUnit: businessUnit._id,
           customer: customers[0],
           owner: admin,
@@ -522,10 +523,10 @@ const createOrderSeed = async () => {
         }).save(),
 
         new Order({
-          code: "ORD-002",
+          code: code2,
           description: "Take-away order",
-          status: 2, // OrderStatus.IN_PROGRESS
-          type: 1, // OrderType.TAKE_AWAY
+          status: OrderStatus.IN_PROGRESS,
+          type: OrderType.TAKE_AWAY,
           businessUnit: businessUnit._id,
           customer: customers[1],
           owner: admin,
@@ -548,7 +549,18 @@ const createOrderSeed = async () => {
 
 export const createDataSeed = async () => {
   try {
-    await cleanupDatabase();
+    // Opt-in destructive reset. Default boot is idempotent — every create*Seed
+    // below short-circuits when its collection already has data, so restarting
+    // the API never wipes user-entered docs. Set RESEED=true (or pass --reseed)
+    // when you really want a clean slate.
+    const reseedRequested =
+      process.env.RESEED === "true" || process.argv.includes("--reseed");
+    if (reseedRequested) {
+      console.log(separator);
+      console.log("RESEED flag detected — wiping database before reseed");
+      await cleanupDatabase();
+    }
+
     await createUserSeed();
     await createBusinessUnitSeed();
     await createMembershipSeed();

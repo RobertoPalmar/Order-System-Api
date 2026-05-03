@@ -13,7 +13,15 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-# Stage 3: runner — imagen final mínima sin fuentes ni devDeps
+# Stage 3: dev — imagen con devDeps para nodemon/ts-node
+FROM node:22-alpine AS dev
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
+# Stage 4: runner — imagen final mínima sin fuentes ni devDeps
 FROM node:22-alpine AS runner
 WORKDIR /app
 RUN addgroup -S nodeapp && adduser -S -G nodeapp nodeapp

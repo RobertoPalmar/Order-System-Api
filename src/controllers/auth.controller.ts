@@ -29,13 +29,13 @@ const issueAndStoreRefreshToken = async (
 
 export const signUp = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, status } = req.body;
+    const { name, email, password } = req.body;
 
     const newUser = new User({
       name,
       email,
       password: await EncryptUtils.encryptString(password),
-      status
+      status: true
     });
 
     const existEmailUser = await repositoryHub.userRepository.findByFilter({email});
@@ -117,8 +117,15 @@ export const signInBussinesUnit = async (req:Request, res:Response): Promise<voi
       return;
     }
 
+    //LOAD CURRENT USER FOR FRESH tokenVersion EMBEDDED IN BU TOKEN
+    const currentUser = await repositoryHub.userRepository.findById(ctx.userID);
+    if(currentUser == null){
+      ErrorResponse.INVALID_USER_REQUEST(res);
+      return;
+    }
+
     //BUSINESS ACCESS ONLY — REFRESH STAYS USER-LEVEL
-    const businessAccessToken = TokenUtils.generateBusinessAccessToken(ctx.userID, membership.role, validBusinessUnit)
+    const businessAccessToken = TokenUtils.generateBusinessAccessToken(currentUser, membership.role, validBusinessUnit)
     SuccessResponse.GET(res, { businessAccessToken })
   } catch (ex: any) {
     console.log("❌ Error in signIn:", ex);

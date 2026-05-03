@@ -1,5 +1,7 @@
 import { TokenType } from "@global/definitions";
 import { requestContext } from "@global/requestContext";
+import { Membership } from "@models/database/membership.model";
+import { User } from "@models/database/user.model";
 import { TokenBussinesData, TokenData } from "@models/helpers/tokenData.model";
 import { ErrorResponse } from "@utils/responseHandler.utils";
 import TokenUtils, {
@@ -50,6 +52,21 @@ export const validateAuth = async (req: Request, res: Response, next: NextFuncti
 
   const tokenData = plainToInstance(TokenData,decoded,{excludeExtraneousValues: true});
 
+  //LIVE LOOKUP — STATUS + TOKEN VERSION
+  const dbUser = await User.findById(tokenData.userID).select("status tokenVersion").lean();
+  if(dbUser == null){
+    ErrorResponse.INVALID_USER_REQUEST(res);
+    return;
+  }
+  if(dbUser.status === false){
+    ErrorResponse.INVALID_USER_REQUEST(res);
+    return;
+  }
+  if((dbUser.tokenVersion ?? 0) !== (tokenData.tv ?? 0)){
+    ErrorResponse.INVALID_TOKEN(res);
+    return;
+  }
+
   requestContext.run(
     { userID: tokenData.userID },
     () => next()
@@ -94,10 +111,34 @@ export const validateBusinessAuth = async (req: Request, res: Response, next: Ne
     return;
   }
 
+  //LIVE LOOKUP — MEMBERSHIP ACTIVE + USER ACTIVE + TOKEN VERSION + FRESH ROLE
+  const membership = await Membership.findOne({
+    user: tokenBussinesData.userID,
+    businessUnit: tokenBussinesData.businessUnitID,
+    status: true,
+  })
+    .populate({ path: "user", select: "status tokenVersion" })
+    .lean();
+
+  if(membership == null){
+    ErrorResponse.NOT_MEMBER_OF_BUSINESS(res);
+    return;
+  }
+
+  const populatedUser = membership.user as any;
+  if(populatedUser == null || populatedUser.status === false){
+    ErrorResponse.INVALID_USER_REQUEST(res);
+    return;
+  }
+  if((populatedUser.tokenVersion ?? 0) !== (tokenBussinesData.tv ?? 0)){
+    ErrorResponse.INVALID_TOKEN(res);
+    return;
+  }
+
   requestContext.run(
     {
       userID: tokenBussinesData.userID,
-      role: tokenBussinesData.role,
+      role: membership.role,
       businessUnitID: tokenBussinesData.businessUnitID,
     },
     () => next()

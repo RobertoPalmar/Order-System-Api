@@ -1201,8 +1201,8 @@ export {};
  *         name: name
  *         schema: { type: string }
  *       - in: query
- *         name: type
- *         schema: { $ref: '#/components/schemas/ComponentType' }
+ *         name: extra
+ *         schema: { type: boolean }
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/LimitParam'
  *     responses:
@@ -2103,8 +2103,8 @@ export {};
  * /Products/toggleAvailability/{productID}:
  *   patch:
  *     tags: [Products]
- *     summary: Toggle the availability flag of a product
- *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION. Flips the isAvailable boolean without affecting the active/inactive status.
+ *     summary: Toggle the active status of a product
+ *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION. Flips the product's status boolean.
  *     x-role-matrix: [ADMIN, ANFITRION]
  *     parameters:
  *       - in: path

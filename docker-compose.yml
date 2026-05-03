@@ -22,6 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: comandas-api
     command: npm run dev
     depends_on:

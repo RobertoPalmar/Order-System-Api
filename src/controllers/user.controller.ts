@@ -1,6 +1,7 @@
 import { UserRole, userBasicPopulate } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
 import { Membership } from "@models/database/membership.model";
+import { RefreshToken } from "@models/database/refreshToken.model";
 import { User } from "@models/database/user.model";
 import { UserDTOOut } from "@models/DTOs/user.DTO";
 import { Pagination } from "@models/response/pagination.model";
@@ -275,8 +276,21 @@ export const updateUser = async (req: Request, res: Response) => {
       return;
     }
 
-    // Handle password encryption if it's being updated
-    if (req.body.password) {
+    //LOAD CURRENT USER STATE FOR DELTA DETECTION
+    const currentUser = await User.findById(userID).select("status");
+    if (currentUser == null) {
+      ErrorResponse.NOT_FOUND(res, "User");
+      return;
+    }
+
+    //SECURITY-SENSITIVE FIELDS — TRIGGER GLOBAL TOKEN INVALIDATION
+    const passwordChanged = !!req.body.password;
+    const statusFlippedFalse =
+      req.body.status === false && currentUser.status === true;
+    const mustInvalidateAllSessions = passwordChanged || statusFlippedFalse;
+
+    //ENCRYPT PASSWORD IF PRESENT
+    if (passwordChanged) {
       req.body.password = await EncryptUtils.encryptString(req.body.password);
     }
 
@@ -292,6 +306,17 @@ export const updateUser = async (req: Request, res: Response) => {
       ErrorResponse.NOT_FOUND(res, "User");
       return;
     }
+
+    //BUMP tokenVersion + REVOKE REFRESH TOKENS ON SECURITY CHANGES
+    //KILLS ALL ACCESS TOKENS GLOBALLY (next request → INVALID_TOKEN)
+    if (mustInvalidateAllSessions) {
+      await User.updateOne({ _id: userID }, { $inc: { tokenVersion: 1 } });
+      await RefreshToken.updateMany(
+        { user: userID, revokedAt: { $exists: false } },
+        { $set: { revokedAt: new Date() } }
+      );
+    }
+
     //MAP DTO
     const userDTO = mapperHub.userMapper.toDTO(updatedUser);
 

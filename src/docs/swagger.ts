@@ -90,11 +90,6 @@ const definition = {
         enum: [0, 1, 2, 3],
         description: "0=ADMIN, 1=ANFITRION, 2=WAITER, 3=PREP_COOK",
       },
-      ComponentType: {
-        type: "integer",
-        enum: [0, 1, 2],
-        description: "0=COMPONENT, 1=EXTRA, 2=COMPONENT_AND_EXTRA",
-      },
       OrderStatus: {
         type: "integer",
         enum: [0, 1, 2, 3, 4],
@@ -221,6 +216,13 @@ const definition = {
           businessUnit: { $ref: "#/components/schemas/BusinessUnitDTOOut" },
         },
       },
+      ExtraDTOOut: {
+        type: "object",
+        properties: {
+          price: { type: "number", minimum: 0 },
+          currency: { $ref: "#/components/schemas/CurrencyDTOOut" },
+        },
+      },
       ComponentDTOOut: {
         type: "object",
         properties: {
@@ -228,11 +230,16 @@ const definition = {
           name: { type: "string" },
           description: { type: "string" },
           image: { type: "string" },
-          type: { $ref: "#/components/schemas/ComponentType" },
           status: { type: "boolean" },
-          priceAsExtra: { type: "number" },
-          currency: { $ref: "#/components/schemas/CurrencyDTOOut" },
+          extra: { $ref: "#/components/schemas/ExtraDTOOut", nullable: true },
           businessUnit: { $ref: "#/components/schemas/BusinessUnitDTOOut" },
+        },
+      },
+      OrderExtraDTOOut: {
+        type: "object",
+        properties: {
+          component: { $ref: "#/components/schemas/ComponentDTOOut" },
+          quantity: { type: "integer", minimum: 1 },
         },
       },
       ProductDTOOut: {
@@ -290,7 +297,7 @@ const definition = {
           totalPrice: { type: "number" },
           extras: {
             type: "array",
-            items: { $ref: "#/components/schemas/ComponentDTOOut" },
+            items: { $ref: "#/components/schemas/OrderExtraDTOOut" },
           },
           removed: {
             type: "array",
@@ -437,24 +444,26 @@ const definition = {
           main: { type: "boolean" },
         },
       },
+      ExtraDTOIn: {
+        type: "object",
+        required: ["price", "currency"],
+        properties: {
+          price: { type: "number", minimum: 0 },
+          currency: { type: "string", description: "Currency id" },
+        },
+      },
       ComponentDTOIn: {
         type: "object",
-        required: [
-          "name",
-          "description",
-          "image",
-          "type",
-          "priceAsExtra",
-          "currency",
-        ],
+        required: ["name"],
         properties: {
           name: { type: "string" },
           description: { type: "string" },
           image: { type: "string" },
-          type: { $ref: "#/components/schemas/ComponentType" },
           status: { type: "boolean", default: true },
-          priceAsExtra: { type: "number", minimum: 0 },
-          currency: { type: "string", description: "Currency id" },
+          extra: {
+            $ref: "#/components/schemas/ExtraDTOIn",
+            description: "Presence indicates component is extra-eligible",
+          },
         },
       },
       PartialComponentDTOIn: {
@@ -463,10 +472,8 @@ const definition = {
           name: { type: "string" },
           description: { type: "string" },
           image: { type: "string" },
-          type: { $ref: "#/components/schemas/ComponentType" },
           status: { type: "boolean" },
-          priceAsExtra: { type: "number", minimum: 0 },
-          currency: { type: "string" },
+          extra: { $ref: "#/components/schemas/ExtraDTOIn" },
         },
       },
       ProductDTOIn: {
@@ -560,47 +567,49 @@ const definition = {
       },
       OrderDTOIn: {
         type: "object",
-        required: [
-          "code",
-          "description",
-          "status",
-          "type",
-          "customer",
-          "owner",
-          "amount",
-          "currency",
-          "details",
-        ],
+        required: ["customer", "details"],
         properties: {
-          code: { type: "string" },
           description: { type: "string" },
-          status: { $ref: "#/components/schemas/OrderStatus" },
-          type: { $ref: "#/components/schemas/OrderType" },
+          status: {
+            $ref: "#/components/schemas/OrderStatus",
+            description: "Defaults to CREATED",
+          },
+          type: {
+            $ref: "#/components/schemas/OrderType",
+            description: "Defaults to DINE_IN",
+          },
           customer: { type: "string", description: "Customer id" },
-          owner: { type: "string", description: "User id (owner)" },
-          amount: { type: "number" },
-          currency: { type: "string", description: "Currency id" },
+          owner: {
+            type: "string",
+            description:
+              "User id (owner). Optional — falls back to logged-in user from token.",
+          },
           details: {
             type: "array",
             items: { $ref: "#/components/schemas/OrderDetailDTOIn" },
           },
+          tableNumber: { type: "string" },
+          partySize: { type: "integer", minimum: 1 },
+          notes: { type: "string" },
+          discountAmount: { type: "number", minimum: 0 },
         },
       },
       PartialOrderDTOIn: {
         type: "object",
         properties: {
-          code: { type: "string" },
           description: { type: "string" },
           status: { $ref: "#/components/schemas/OrderStatus" },
           type: { $ref: "#/components/schemas/OrderType" },
           customer: { type: "string" },
           owner: { type: "string" },
-          amount: { type: "number" },
-          currency: { type: "string" },
           details: {
             type: "array",
             items: { $ref: "#/components/schemas/OrderDetailDTOIn" },
           },
+          tableNumber: { type: "string" },
+          partySize: { type: "integer", minimum: 1 },
+          notes: { type: "string" },
+          discountAmount: { type: "number", minimum: 0 },
         },
       },
 

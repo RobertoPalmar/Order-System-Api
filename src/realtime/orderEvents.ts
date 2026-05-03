@@ -146,8 +146,8 @@ export function emitOrderItemStatusChanged(
 }
 
 /**
- * Fires when `Product.isAvailable` is toggled via PATCH
- * /Products/:id/availability. Rooms: bu:<BU>.
+ * Fires when `Product.status` is toggled via PATCH
+ * /Products/toggleAvailability/:id. Rooms: bu:<BU>.
  */
 export function emitProductAvailabilityChanged(
   product: ProductDTOOut,

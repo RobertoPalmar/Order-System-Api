@@ -18,12 +18,17 @@ export interface IMinimalProductionArea {
   name: string;
 }
 
+export interface IOrderExtra {
+  component: IComponent;
+  quantity: number;
+}
+
 export interface IOrderDetail extends mongoose.Document {
   product: IProduct;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  extras: IComponent[];
+  extras: IOrderExtra[];
   removed: IComponent[];
   notes?: string;
   itemStatus: ItemStatus;
@@ -35,7 +40,7 @@ export interface OrderDetail {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  extras: IComponent[] | Types.ObjectId[];
+  extras: IOrderExtra[];
   removed: IComponent[] | Types.ObjectId[];
   notes?: string;
   itemStatus?: ItemStatus;
@@ -77,6 +82,18 @@ const MinimalComponentSchema = new Schema({
   description: { type: String, required: true },
 });
 
+// Embedded extra entry — captures the component snapshot plus how many units
+// of that extra were requested. quantity defaults to 1 because today the API
+// only accepts component ids; the field is reserved for future per-extra
+// quantity support.
+const OrderExtraSchema = new Schema(
+  {
+    component: { type: MinimalComponentSchema, required: true },
+    quantity: { type: Number, required: true, min: 1, default: 1 },
+  },
+  { _id: false }
+);
+
 const MinimalProductionAreaSchema = new Schema({
   _id: { type: String, required: true },
   name: { type: String, required: true },
@@ -93,7 +110,7 @@ const OrderDetailSchema = new Schema<IOrderDetail>(
     quantity: { type: Number, required: true },
     unitPrice: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
-    extras: [MinimalComponentSchema],
+    extras: [OrderExtraSchema],
     removed: [MinimalComponentSchema],
     notes: { type: String },
     itemStatus: {

@@ -70,11 +70,11 @@ export const getCurrencyByID = async (req: Request, res: Response) => {
     const ctx = getCurrentContext();
 
     //GET PARAMS
-    const { CurrencyID } = req.params;
+    const { currencyID } = req.params;
 
     //FIND Currency
     const CurrencyByID = await repositoryHub.currencyRepository.findById(
-      CurrencyID,
+      currencyID,
       currencyBasicPopulate
     );
 
@@ -198,6 +198,14 @@ export const createCurrency = async (req: Request, res: Response) => {
       return;
     }
 
+    //IF NEW IS MAIN — DEMOTE EXISTING MAIN IN SAME BU
+    if (main === true) {
+      await Currency.updateMany(
+        { businessUnit: ctx.businessUnitID, main: true },
+        { $set: { main: false } }
+      );
+    }
+
     //CREATE CURRENCY
     const newCurrency = await repositoryHub.currencyRepository.create(
       currency,
@@ -225,6 +233,18 @@ export const updateCurrency = async (req: Request, res: Response) => {
     if(existCurrency == null){
       ErrorResponse.NOT_FOUND(res, "Currency");
       return;
+    }
+
+    //IF PROMOTING TO MAIN — DEMOTE OTHER MAIN IN SAME BU FIRST
+    if (req.body?.main === true) {
+      await Currency.updateMany(
+        {
+          businessUnit: ctx.businessUnitID,
+          main: true,
+          _id: { $ne: req.params.currencyID },
+        },
+        { $set: { main: false } }
+      );
     }
 
     //UPDATE Currency
@@ -287,7 +307,7 @@ export const deleteCurrency = async (req:Request, res:Response) => {
     //COMPONENT REFS GUARD
     const componentRefs = await Component.countDocuments({
       businessUnit: ctx.businessUnitID,
-      currency: req.params.currencyID,
+      "extra.currency": req.params.currencyID,
     });
     if (componentRefs > 0) {
       ErrorResponse.FORBIDDEN(res, "Currency referenced by components");

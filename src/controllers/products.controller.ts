@@ -350,10 +350,10 @@ export const toggleAvailability = asyncHandler(
     const product = await repositoryHub.productRepository.findById(productID);
     if (!product) throw new NotFoundError("Product");
 
-    //TOGGLE AVAILABILITY
+    //TOGGLE STATUS (formerly isAvailable — now unified into status)
     const updated = await repositoryHub.productRepository.updateById(
       productID,
-      { isAvailable: !product.isAvailable } as any,
+      { status: !product.status } as any,
       productTotalPopulate
     );
 

@@ -87,7 +87,7 @@ const globalRateLimiter = rateLimit({
 
 const authRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === "production" ? 5 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {

@@ -151,10 +151,9 @@ const createFilterByQueryParams = (req: Request) => {
     name,
     description,
     image,
-    type,
+    extra,
     status,
-    priceAsExtra,
-    currency
+    currency,
   } = req.query;
   let filter: any = {};
 
@@ -162,10 +161,14 @@ const createFilterByQueryParams = (req: Request) => {
   if (name) filter.name = { $regex: name as string, $options: "i" };
   if (description) filter.description = { $regex: description as string, $options: "i" };
   if (image) filter.image = { $regex: image as string, $options: "i" };
-  if (type !== undefined) filter.type = type;
+  if (extra !== undefined) {
+    // ?extra=true → only extra-eligible (extra subdoc present)
+    // ?extra=false → only non-extra (extra subdoc missing)
+    const isExtra = String(extra) === "true";
+    filter.extra = isExtra ? { $exists: true, $ne: null } : { $in: [null, undefined] };
+  }
   if (status !== undefined) filter.status = status;
-  if (priceAsExtra !== undefined) filter.priceAsExtra = priceAsExtra;
-  if (currency) filter.currency = currency;
+  if (currency) filter["extra.currency"] = currency;
 
   return filter;
 };
@@ -176,24 +179,15 @@ export const createComponent = async (req: Request, res: Response) => {
     const ctx = getCurrentContext();
 
     //GET PARAMS
-    const {
-      name,
-      description,
-      image,
-      type,
-      status,
-      priceAsExtra,
-      currency } = req.body;
+    const { name, description, image, status, extra } = req.body;
 
     //FORMAT COMPONENT
     const component = new Component({
       name,
       description,
       image,
-      type,
       status,
-      priceAsExtra,
-      currency,
+      extra,
       businessUnit: ctx.businessUnitID!,
     });
 
@@ -233,7 +227,7 @@ export const updateComponent = async (req: Request, res: Response) => {
       return;
     }
 
-    //UPDATE Component
+    //UPDATE Component — body.extra (subdoc) replaces wholly; null/undefined leaves it untouched
     const updateComponent = await repositoryHub.componentRepository.updateById(
       req.params.componentID,
       req.body,

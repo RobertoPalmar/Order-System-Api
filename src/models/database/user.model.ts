@@ -5,7 +5,8 @@ export interface IUser extends mongoose.Document{
   email: string,
   password: string,
   status: boolean,
-  validBusinessUnit: number
+  validBusinessUnit: number,
+  tokenVersion: number
 }
 
 export const UserSchema = new Schema<IUser>(
@@ -14,7 +15,8 @@ export const UserSchema = new Schema<IUser>(
     email: {type: String, required: true},
     password: {type: String, required: true},
     status: {type: Boolean, required: true},
-    validBusinessUnit: {type: Number, default: 1}
+    validBusinessUnit: {type: Number, default: 1},
+    tokenVersion: {type: Number, default: 0, required: true}
   },
   {timestamps: true}
 );
