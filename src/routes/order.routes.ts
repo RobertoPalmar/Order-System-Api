@@ -1,7 +1,6 @@
 import { Router } from "express";
 import {
   AddOrderItemDTOIn,
-  ApplyDiscountDTOIn,
   ChangeOrderStatusDTOIn,
   CloseOrderDTOIn,
   OrderDTOIn,
@@ -29,7 +28,6 @@ router.patch('/changeOrderStatus/:orderID', validateBusinessAuth, requireRole(Us
 router.post('/addItem/:orderID', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION, UserRole.WAITER), validateObjectIdParams(["orderID"]), validateBody(AddOrderItemDTOIn), OrderController.addItem);
 router.delete('/removeItem/:orderID/:detailID', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION, UserRole.WAITER), validateObjectIdParams(["orderID", "detailID"]), OrderController.removeItem);
 router.patch('/updateItemStatus/:orderID/:detailID', validateBusinessAuth, validateObjectIdParams(["orderID", "detailID"]), validateBody(UpdateItemStatusDTOIn), OrderController.updateItemStatus);
-router.patch('/applyDiscount/:orderID', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION), validateObjectIdParams(["orderID"]), validateBody(ApplyDiscountDTOIn), OrderController.applyDiscount);
 router.patch('/closeOrder/:orderID', validateBusinessAuth, requireRole(UserRole.ADMIN, UserRole.ANFITRION), validateObjectIdParams(["orderID"]), validateBody(CloseOrderDTOIn), OrderController.closeOrder);
 router.get('/byTable/:tableNumber', validateBusinessAuth, OrderController.getOrdersByTable);
 router.get('/byProductionArea/:areaID', validateBusinessAuth, validateObjectIdParams(["areaID"]), OrderController.getOrdersByProductionArea);

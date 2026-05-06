@@ -1,4 +1,5 @@
-import { UserRole, userBasicPopulate } from "@global/definitions";
+import mongoose from "mongoose";
+import { userBasicPopulate } from "@global/definitions";
 import { getCurrentContext } from "@global/requestContext";
 import { Membership } from "@models/database/membership.model";
 import { RefreshToken } from "@models/database/refreshToken.model";
@@ -14,9 +15,6 @@ import { Request, Response } from "express";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const ctx = getCurrentContext();
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -30,36 +28,12 @@ export const getAllUsers = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET USER IDS FROM ACTIVE MEMBERSHIPS IN CURRENT BU
-    const memberships = await Membership.find({
-      businessUnit: ctx.businessUnitID,
-      status: true,
-    }).select("user");
-    const memberUserIDs = memberships.map((m) => m.user);
-
-    //SHORT-CIRCUIT IF NO MEMBERS
-    if (memberUserIDs.length === 0) {
-      const emptyPagination: Pagination<UserDTOOut[]> = {
-        data: [],
-        pagination: {
-          limit,
-          page,
-          total: 0,
-          totalPages: 0,
-        },
-      };
-      SuccessResponse.GET(res, emptyPagination);
-      return;
-    }
-
-    //GET USER LIST SCOPED TO CURRENT BU MEMBERS
+    //GLOBAL USER LIST — SUPER-ADMIN SCOPE, NO BU FILTER
     const { data, total, totalPages } =
-      await repositoryHub.userRepository.findByFilter(
-        { _id: { $in: memberUserIDs } },
-        userBasicPopulate,
-        undefined,
+      await repositoryHub.userRepository.findAllPaginated(
         page,
-        limit
+        limit,
+        userBasicPopulate
       );
 
     //MAP THE LIST DATA
@@ -86,13 +60,10 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const getUserByID = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const ctx = getCurrentContext();
-
     //GET PARAMS
     const { userID } = req.params;
 
-    //FIND USER
+    //FIND USER (GLOBAL — SUPER-ADMIN SCOPE)
     const userByID = await repositoryHub.userRepository.findById(
       userID,
       userBasicPopulate
@@ -100,17 +71,6 @@ export const getUserByID = async (req: Request, res: Response) => {
 
     //VALIDATE IS USER EXIST
     if (userByID == null) {
-      ErrorResponse.NOT_FOUND(res, "User");
-      return;
-    }
-
-    //VALIDATE MEMBERSHIP IN CURRENT BU
-    const membership = await Membership.findOne({
-      user: userID,
-      businessUnit: ctx.businessUnitID,
-      status: true,
-    });
-    if (membership == null) {
       ErrorResponse.NOT_FOUND(res, "User");
       return;
     }
@@ -128,9 +88,6 @@ export const getUserByID = async (req: Request, res: Response) => {
 
 export const getUsersBy = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const ctx = getCurrentContext();
-
     //GET PAGINATION PARAMS
     const { invalid, page, limit } = getPaginationParams(req);
 
@@ -144,31 +101,8 @@ export const getUsersBy = async (req: Request, res: Response) => {
       return;
     }
 
-    //GET USER IDS FROM ACTIVE MEMBERSHIPS IN CURRENT BU
-    const memberships = await Membership.find({
-      businessUnit: ctx.businessUnitID,
-      status: true,
-    }).select("user");
-    const memberUserIDs = memberships.map((m) => m.user);
-
-    //SHORT-CIRCUIT IF NO MEMBERS
-    if (memberUserIDs.length === 0) {
-      const emptyPagination: Pagination<UserDTOOut[]> = {
-        data: [],
-        pagination: {
-          limit,
-          page,
-          total: 0,
-          totalPages: 0,
-        },
-      };
-      SuccessResponse.GET(res, emptyPagination);
-      return;
-    }
-
-    //GET FILTER BY PARAMS MERGED WITH BU SCOPE
-    let filter = createFilterByQueryParams(req);
-    filter._id = { $in: memberUserIDs };
+    //GLOBAL FILTER — NO BU INTERSECTION
+    const filter = createFilterByQueryParams(req);
 
     //GET USER LIST
     const { data, total, totalPages } =
@@ -257,125 +191,126 @@ export const createUser = async (req: Request, res: Response) => {
   }
 };
 
+// Performs the user update with security-sensitive side effects:
+// password is hashed, and tokenVersion bumps + refresh-token revocation
+// trigger when password changes or status flips active->inactive.
+const performUserUpdate = async (userID: string, body: any, res: Response) => {
+  //LOAD CURRENT USER STATE FOR DELTA DETECTION
+  const currentUser = await User.findById(userID).select("status");
+  if (currentUser == null) {
+    ErrorResponse.NOT_FOUND(res, "User");
+    return;
+  }
+
+  //SECURITY-SENSITIVE FIELDS — TRIGGER GLOBAL TOKEN INVALIDATION
+  const passwordChanged = !!body.password;
+  const statusFlippedFalse =
+    body.status === false && currentUser.status === true;
+  const mustInvalidateAllSessions = passwordChanged || statusFlippedFalse;
+
+  //ENCRYPT PASSWORD IF PRESENT
+  if (passwordChanged) {
+    body.password = await EncryptUtils.encryptString(body.password);
+  }
+
+  //UPDATE USER
+  const updatedUser = await repositoryHub.userRepository.updateById(
+    userID,
+    body,
+    userBasicPopulate
+  );
+
+  if (updatedUser == null) {
+    ErrorResponse.NOT_FOUND(res, "User");
+    return;
+  }
+
+  //BUMP tokenVersion + REVOKE REFRESH TOKENS ON SECURITY CHANGES
+  if (mustInvalidateAllSessions) {
+    await User.updateOne({ _id: userID }, { $inc: { tokenVersion: 1 } });
+    await RefreshToken.updateMany(
+      { user: userID, revokedAt: { $exists: false } },
+      { $set: { revokedAt: new Date() } }
+    );
+  }
+
+  //MAP DTO
+  const userDTO = mapperHub.userMapper.toDTO(updatedUser);
+  SuccessResponse.UPDATE(res, userDTO);
+};
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
-    const ctx = getCurrentContext();
-
-    //GET PARAMS
     const { userID } = req.params;
-
-    //VALIDATE MEMBERSHIP IN CURRENT BU
-    const membership = await Membership.findOne({
-      user: userID,
-      businessUnit: ctx.businessUnitID,
-      status: true,
-    });
-    if (membership == null) {
-      ErrorResponse.NOT_FOUND(res, "User");
-      return;
-    }
-
-    //LOAD CURRENT USER STATE FOR DELTA DETECTION
-    const currentUser = await User.findById(userID).select("status");
-    if (currentUser == null) {
-      ErrorResponse.NOT_FOUND(res, "User");
-      return;
-    }
-
-    //SECURITY-SENSITIVE FIELDS — TRIGGER GLOBAL TOKEN INVALIDATION
-    const passwordChanged = !!req.body.password;
-    const statusFlippedFalse =
-      req.body.status === false && currentUser.status === true;
-    const mustInvalidateAllSessions = passwordChanged || statusFlippedFalse;
-
-    //ENCRYPT PASSWORD IF PRESENT
-    if (passwordChanged) {
-      req.body.password = await EncryptUtils.encryptString(req.body.password);
-    }
-
-    //UPDATE USER
-    const updatedUser = await repositoryHub.userRepository.updateById(
-      userID,
-      req.body,
-      userBasicPopulate
-    );
-
-    //VALIDATE IF EXIST
-    if (updatedUser == null) {
-      ErrorResponse.NOT_FOUND(res, "User");
-      return;
-    }
-
-    //BUMP tokenVersion + REVOKE REFRESH TOKENS ON SECURITY CHANGES
-    //KILLS ALL ACCESS TOKENS GLOBALLY (next request → INVALID_TOKEN)
-    if (mustInvalidateAllSessions) {
-      await User.updateOne({ _id: userID }, { $inc: { tokenVersion: 1 } });
-      await RefreshToken.updateMany(
-        { user: userID, revokedAt: { $exists: false } },
-        { $set: { revokedAt: new Date() } }
-      );
-    }
-
-    //MAP DTO
-    const userDTO = mapperHub.userMapper.toDTO(updatedUser);
-
-    //RETURN RESPONSE
-    SuccessResponse.UPDATE(res, userDTO);
+    await performUserUpdate(userID, req.body, res);
   } catch (ex: any) {
     console.log("❌ Error in updateUser:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
   }
 };
 
-export const deleteUser = async (req: Request, res: Response) => {
+// Self-service or super-admin profile edit. Allowed when the requester is
+// either the target user or a super-admin. Self callers cannot escalate to
+// super-admin (isSuperAdmin is not in the DTO) and cannot promote/demote
+// global roles via this endpoint.
+export const editProfile = async (req: Request, res: Response) => {
   try {
-    //GET TOKEN DATA
     const ctx = getCurrentContext();
-
-    //GET PARAMS
     const { userID: targetUserID } = req.params;
 
-    //FIND TARGET MEMBERSHIP IN CURRENT BU
-    const targetMembership = await Membership.findOne({
-      user: targetUserID,
-      businessUnit: ctx.businessUnitID,
-    });
-    if (targetMembership == null) {
-      ErrorResponse.NOT_FOUND(res, "User");
-      return;
-    }
-
-    //LAST-ADMIN GUARD
-    const isActiveAdmin =
-      targetMembership.role === UserRole.ADMIN && targetMembership.status === true;
-
-    if (isActiveAdmin) {
-      const remainingAdmins = await Membership.countDocuments({
-        businessUnit: ctx.businessUnitID,
-        role: UserRole.ADMIN,
-        status: true,
-        _id: { $ne: targetMembership._id },
-      });
-
-      if (remainingAdmins === 0) {
-        ErrorResponse.FORBIDDEN(
-          res,
-          "Cannot remove the last active admin of the business unit"
-        );
+    //ACCESS GUARD — SELF OR SUPER-ADMIN
+    if (ctx.userID !== targetUserID) {
+      const me = await User.findById(ctx.userID).select("isSuperAdmin").lean();
+      if (me?.isSuperAdmin !== true) {
+        ErrorResponse.FORBIDDEN(res, "You can only edit your own profile");
         return;
       }
     }
 
-    //DELETE MEMBERSHIP
-    await repositoryHub.membershipRepository.deleteById(
-      targetMembership._id as string
-    );
+    await performUserUpdate(targetUserID, req.body, res);
+  } catch (ex: any) {
+    console.log("❌ Error in editProfile:", ex);
+    ErrorResponse.UNEXPECTED_ERROR(res);
+  }
+};
 
-    //RETURN THE RESPONSE
+export const deleteUser = async (req: Request, res: Response) => {
+  const { userID } = req.params;
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      //LOAD TARGET USER WITHIN TRANSACTION
+      const user = await User.findById(userID).session(session);
+      if (!user) throw new Error("USER_NOT_FOUND");
+
+      //LAST SUPER-ADMIN GUARD — MIRRORS LAST-ADMIN-OF-BU GUARD IN MEMBERSHIPS
+      if (user.isSuperAdmin) {
+        const remaining = await User.countDocuments({
+          _id: { $ne: userID },
+          isSuperAdmin: true,
+          status: true,
+        }).session(session);
+        if (remaining === 0) throw new Error("LAST_SUPERADMIN");
+      }
+
+      //CASCADE — REFRESH TOKENS → MEMBERSHIPS → USER
+      await RefreshToken.deleteMany({ user: userID }, { session });
+      await Membership.deleteMany({ user: userID }, { session });
+      await User.deleteOne({ _id: userID }, { session });
+    });
     SuccessResponse.DELETE(res);
   } catch (ex: any) {
+    if (ex?.message === "USER_NOT_FOUND") {
+      ErrorResponse.NOT_FOUND(res, "User");
+      return;
+    }
+    if (ex?.message === "LAST_SUPERADMIN") {
+      ErrorResponse.FORBIDDEN(res, "Cannot delete the last active super-admin");
+      return;
+    }
     console.log("❌ Error in deleteUser:", ex);
     ErrorResponse.UNEXPECTED_ERROR(res);
+  } finally {
+    await session.endSession();
   }
 };

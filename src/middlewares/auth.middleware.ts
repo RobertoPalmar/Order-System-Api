@@ -144,3 +144,70 @@ export const validateBusinessAuth = async (req: Request, res: Response, next: Ne
     () => next()
   );
 }
+
+export const validateSuperAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  const authHeaders = req.headers.authorization;
+  const authToken = authHeaders?.split(' ')[1];
+
+  if(authToken == null){
+    ErrorResponse.MISSING_TOKEN(res);
+    return;
+  }
+
+  const {decoded, expired} = TokenUtils.verifyToken(authToken);
+
+  if(expired){
+    ErrorResponse.EXPIRED_TOKEN(res);
+    return;
+  }
+
+  if(decoded == null){
+    ErrorResponse.INVALID_TOKEN(res);
+    return;
+  }
+
+  //REJECT REFRESH TOKENS
+  const decodedType = (decoded as any).type;
+  if(decodedType === TOKEN_TYPE_REFRESH){
+    ErrorResponse.INVALID_TOKEN_TYPE(res, TokenType.USER_ACCESS);
+    return;
+  }
+
+  //ACCEPT BOTH user-access AND business-access — SUPER-ADMIN MAY HOLD EITHER
+  if(
+    decodedType !== undefined &&
+    decodedType !== TOKEN_TYPE_USER_ACCESS &&
+    decodedType !== TOKEN_TYPE_BUSINESS_ACCESS
+  ){
+    ErrorResponse.INVALID_TOKEN_TYPE(res, TokenType.USER_ACCESS);
+    return;
+  }
+
+  const tokenData = plainToInstance(TokenData,decoded,{excludeExtraneousValues: true});
+
+  //LIVE LOOKUP — STATUS + TOKEN VERSION + SUPER-ADMIN FLAG
+  const dbUser = await User.findById(tokenData.userID).select("status tokenVersion isSuperAdmin").lean();
+  if(dbUser == null){
+    ErrorResponse.INVALID_USER_REQUEST(res);
+    return;
+  }
+  if(dbUser.status === false){
+    ErrorResponse.INVALID_USER_REQUEST(res);
+    return;
+  }
+  if((dbUser.tokenVersion ?? 0) !== (tokenData.tv ?? 0)){
+    ErrorResponse.INVALID_TOKEN(res);
+    return;
+  }
+
+  //SUPER-ADMIN GATE
+  if(dbUser.isSuperAdmin !== true){
+    ErrorResponse.FORBIDDEN(res, "Super-admin privileges required");
+    return;
+  }
+
+  requestContext.run(
+    { userID: tokenData.userID },
+    () => next()
+  );
+}

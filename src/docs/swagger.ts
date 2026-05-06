@@ -591,7 +591,6 @@ const definition = {
           tableNumber: { type: "string" },
           partySize: { type: "integer", minimum: 1 },
           notes: { type: "string" },
-          discountAmount: { type: "number", minimum: 0 },
         },
       },
       PartialOrderDTOIn: {
@@ -609,7 +608,6 @@ const definition = {
           tableNumber: { type: "string" },
           partySize: { type: "integer", minimum: 1 },
           notes: { type: "string" },
-          discountAmount: { type: "number", minimum: 0 },
         },
       },
 
@@ -648,14 +646,6 @@ const definition = {
         required: ["status"],
         properties: {
           status: { $ref: "#/components/schemas/ItemStatus" },
-        },
-      },
-      ApplyDiscountDTOIn: {
-        type: "object",
-        required: ["discountAmount"],
-        properties: {
-          discountAmount: { type: "number", minimum: 0 },
-          reason: { type: "string" },
         },
       },
       CloseOrderDTOIn: {

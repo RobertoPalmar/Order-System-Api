@@ -197,6 +197,7 @@ const createUserSeed = async () => {
           email: "admin.restaurant@demo.com",
           password: await EncryptUtils.encryptString("admin123"),
           status: true,
+          isSuperAdmin: true,
         }).save(),
 
         new User({

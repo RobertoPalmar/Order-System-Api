@@ -4,7 +4,7 @@ import { IsOptional, IsString, IsTaxId } from "class-validator";
 
 export class CategoryDTOIn{
   @IsString() name!:string;
-  @IsString() description!:string;
+  @IsOptional() @IsString() description?:string;
 }
 
 export class PartialCategoryDTOIn{

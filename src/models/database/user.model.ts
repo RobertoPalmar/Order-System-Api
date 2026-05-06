@@ -6,7 +6,8 @@ export interface IUser extends mongoose.Document{
   password: string,
   status: boolean,
   validBusinessUnit: number,
-  tokenVersion: number
+  tokenVersion: number,
+  isSuperAdmin: boolean
 }
 
 export const UserSchema = new Schema<IUser>(
@@ -16,7 +17,8 @@ export const UserSchema = new Schema<IUser>(
     password: {type: String, required: true},
     status: {type: Boolean, required: true},
     validBusinessUnit: {type: Number, default: 1},
-    tokenVersion: {type: Number, default: 0, required: true}
+    tokenVersion: {type: Number, default: 0, required: true},
+    isSuperAdmin: {type: Boolean, default: false, required: true}
   },
   {timestamps: true}
 );

@@ -19,7 +19,6 @@ import {
 } from "@realtime/orderEvents";
 import {
   AddOrderItemDTOIn,
-  ApplyDiscountDTOIn,
   ChangeOrderStatusDTOIn,
   CloseOrderDTOIn,
   OrderDetailDTOIn,
@@ -224,7 +223,6 @@ const MapOrderDTOInToOrderEntity = async (
     tableNumber,
     partySize,
     notes,
-    discountAmount,
   } = req.body;
 
   //RESOLVE BU MAIN CURRENCY — every price stored on the order is normalized
@@ -385,7 +383,6 @@ const MapOrderDTOInToOrderEntity = async (
     tableNumber,
     partySize,
     notes,
-    discountAmount,
   });
 
   return [true, order];
@@ -409,7 +406,6 @@ const buildOrderUpdatePayload = async (
     "tableNumber",
     "partySize",
     "notes",
-    "discountAmount",
   ] as const;
   for (const k of scalarKeys) {
     if (body[k] !== undefined) update[k] = body[k];
@@ -792,49 +788,7 @@ export const updateItemStatus = asyncHandler(
   }
 );
 
-// ─── 5. APPLY DISCOUNT ────────────────────────────────────────────────────────
-export const applyDiscount = asyncHandler(
-  async (req: Request, res: Response) => {
-    //GET TOKEN DATA
-    const ctx = getCurrentContext();
-
-    //GET PARAMS
-    const { orderID } = req.params;
-    const body = req.body as ApplyDiscountDTOIn;
-
-    //FIND ORDER
-    const order = await repositoryHub.orderRepository.findById(orderID);
-    if (!order) throw new NotFoundError("Order");
-
-    //VALIDATE ORDER IS IN DISCOUNTABLE STATE
-    const discountableStatuses: OrderStatus[] = [
-      OrderStatus.PENDING,
-      OrderStatus.CREATED,
-      OrderStatus.IN_PROGRESS,
-    ];
-    if (!discountableStatuses.includes(order.status)) {
-      throw new BadRequestError(
-        "status",
-        "Discount can only be applied to orders in PENDING, CREATED, or IN_PROGRESS status"
-      );
-    }
-
-    //PERSIST DISCOUNT
-    const updated = await repositoryHub.orderRepository.updateById(
-      orderID,
-      { discountAmount: body.discountAmount } as any,
-      orderPopulate
-    );
-
-    //MAP DTO
-    const orderDTO = mapperHub.orderMapper.toDTO(updated!);
-
-    //RETURN RESPONSE
-    SuccessResponse.UPDATE(res, orderDTO);
-  }
-);
-
-// ─── 6. CLOSE ORDER ───────────────────────────────────────────────────────────
+// ─── 5. CLOSE ORDER ───────────────────────────────────────────────────────────
 export const closeOrder = asyncHandler(async (req: Request, res: Response) => {
   //GET TOKEN DATA
   const ctx = getCurrentContext();

@@ -505,11 +505,74 @@ export {};
 
 /**
  * @swagger
+ * /Users/createUser:
+ *   post:
+ *     tags: [Users]
+ *     summary: Create a global User
+ *     description: Requires any authenticated user (USER_TOKEN or BUSINESS_TOKEN). Creates a new global User identity. Membership in a BusinessUnit is granted separately via /BusinessUnit/{id}/members.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/UserDTOIn' }
+ *     responses:
+ *       201:
+ *         description: User created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/UserDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
+ * /Users/updateUser/{userID}:
+ *   put:
+ *     tags: [Users]
+ *     summary: Update any user (super-admin)
+ *     description: Requires a token from a User with `isSuperAdmin = true`. Password changes and disabling the account bump tokenVersion and revoke all refresh tokens (forces re-login everywhere).
+ *     parameters:
+ *       - in: path
+ *         name: userID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/PartialUserDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/UserDTOOut' }
+ *       400: { $ref: '#/components/responses/ValidationError' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
  * /Users/getAllUsers:
  *   get:
  *     tags: [Users]
- *     summary: List users (paginated)
- *     description: Requires a USER_TOKEN (any authenticated user).
+ *     summary: List users (paginated, global)
+ *     description: Requires a token from a User with `isSuperAdmin = true`. Returns all users across all BusinessUnits with no membership filter.
  *     parameters:
  *       - $ref: '#/components/parameters/PageParam'
  *       - $ref: '#/components/parameters/LimitParam'
@@ -541,7 +604,8 @@ export {};
  * /Users/getUserByID/{userID}:
  *   get:
  *     tags: [Users]
- *     summary: Get a user by id
+ *     summary: Get a user by id (global)
+ *     description: Requires a token from a User with `isSuperAdmin = true`.
  *     parameters:
  *       - in: path
  *         name: userID
@@ -568,7 +632,8 @@ export {};
  * /Users/getUsersBy:
  *   get:
  *     tags: [Users]
- *     summary: Filter users
+ *     summary: Filter users (global)
+ *     description: Requires a token from a User with `isSuperAdmin = true`.
  *     parameters:
  *       - in: query
  *         name: name
@@ -593,12 +658,45 @@ export {};
 
 /**
  * @swagger
+ * /Users/editProfile/{userID}:
+ *   put:
+ *     tags: [Users]
+ *     summary: Edit a user profile (self or super-admin)
+ *     description: Authenticated users can edit their own profile; super-admins can edit any user. Password changes and disabling the account bump tokenVersion and revoke refresh tokens (forces re-login everywhere).
+ *     parameters:
+ *       - in: path
+ *         name: userID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/PartialUserDTOIn' }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data: { $ref: '#/components/schemas/UserDTOOut' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { $ref: '#/components/responses/Forbidden' }
+ *       404: { $ref: '#/components/responses/NotFound' }
+ *       500: { $ref: '#/components/responses/UnexpectedError' }
+ */
+
+/**
+ * @swagger
  * /Users/deleteUser/{userID}:
  *   delete:
  *     tags: [Users]
- *     summary: Delete a user
- *     description: Requires a BUSINESS_TOKEN. ADMIN role only.
- *     x-role-matrix: [ADMIN]
+ *     summary: Delete a user (cascade)
+ *     description: Requires a token from a User with `isSuperAdmin = true`. Performs a cascade delete inside a Mongo transaction — removes the User, all their Memberships, and all their RefreshTokens. Refuses if the target is the last active super-admin.
  *     parameters:
  *       - in: path
  *         name: userID
@@ -1954,41 +2052,6 @@ export {};
  *     responses:
  *       200:
  *         description: Item status updated
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiSuccess'
- *                 - type: object
- *                   properties:
- *                     data: { $ref: '#/components/schemas/OrderDTOOut' }
- *       400: { $ref: '#/components/responses/ValidationError' }
- *       401: { $ref: '#/components/responses/Unauthorized' }
- *       404: { $ref: '#/components/responses/NotFound' }
- *       500: { $ref: '#/components/responses/UnexpectedError' }
- */
-
-/**
- * @swagger
- * /Orders/applyDiscount/{orderID}:
- *   patch:
- *     tags: [Orders]
- *     summary: Apply a monetary discount to an order
- *     description: Requires BUSINESS_TOKEN. Roles ADMIN or ANFITRION.
- *     x-role-matrix: [ADMIN, ANFITRION]
- *     parameters:
- *       - in: path
- *         name: orderID
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema: { $ref: '#/components/schemas/ApplyDiscountDTOIn' }
- *     responses:
- *       200:
- *         description: Discount applied
  *         content:
  *           application/json:
  *             schema:

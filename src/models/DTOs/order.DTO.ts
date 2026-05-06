@@ -4,7 +4,7 @@ import {
   OrderType,
   PaymentMethod,
 } from "@global/definitions";
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
@@ -55,7 +55,6 @@ export class OrderDTOIn {
   @IsOptional() @IsString() tableNumber?: string;
   @IsOptional() @IsNumber() @Min(1) partySize?: number;
   @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
 }
 
 export class PartialOrderDTOIn {
@@ -69,7 +68,6 @@ export class PartialOrderDTOIn {
   @IsOptional() @IsString() tableNumber?: string;
   @IsOptional() @IsNumber() @Min(1) partySize?: number;
   @IsOptional() @IsString() notes?: string;
-  @IsOptional() @IsNumber() @Min(0) discountAmount?: number;
 }
 
 // Output shape for a single extra line in an order detail. Keeps the full
@@ -86,6 +84,9 @@ export class OrderExtraDTOOut {
 }
 
 export class OrderDetailDTOOut {
+  @Expose()
+  @Transform(({ obj }) => obj?._id?.toString() ?? obj?.id)
+  id!: string;
   @Expose() product: ProductDTOOut;
   @Expose() quantity: number;
   @Expose() unitPrice: number;
@@ -137,7 +138,6 @@ export class OrderDTOOut {
   @Expose() tableNumber?: string;
   @Expose() partySize?: number;
   @Expose() notes?: string;
-  @Expose() discountAmount: number;
   @Expose() tipAmount: number;
   @Expose() paymentMethod: PaymentMethod | null;
   @Expose() paidAt: Date | null;
@@ -155,7 +155,6 @@ export class OrderDTOOut {
     currency: CurrencyDTOOut,
     details: OrderDetailDTOOut[],
     businessUnit: BusinessUnitDTOOut,
-    discountAmount: number = 0,
     tipAmount: number = 0,
     paymentMethod: PaymentMethod | null = null,
     paidAt: Date | null = null,
@@ -175,7 +174,6 @@ export class OrderDTOOut {
     this.currency = currency;
     this.details = details;
     this.businessUnit = businessUnit;
-    this.discountAmount = discountAmount;
     this.tipAmount = tipAmount;
     this.paymentMethod = paymentMethod;
     this.paidAt = paidAt;
@@ -210,12 +208,6 @@ export class AddOrderItemDTOIn {
 /** PATCH /Orders/:id/items/:itemId/status — cocina/mesero mueven el ítem. */
 export class UpdateItemStatusDTOIn {
   @IsEnum(ItemStatus) status!: ItemStatus;
-}
-
-/** PATCH /Orders/:id/discount — aplicar descuento monetario a la orden. */
-export class ApplyDiscountDTOIn {
-  @IsNumber() @Min(0) discountAmount!: number;
-  @IsOptional() @IsString() reason?: string;
 }
 
 /** POST /Orders/:id/close — cobrar y cerrar la orden (COMPLETED -> CLOSED). */
